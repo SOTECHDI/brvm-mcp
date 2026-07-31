@@ -1,0 +1,444 @@
+"""
+brvm-mcp — Serveur MCP donnant accès aux données publiques de la BRVM
+(Bourse Régionale des Valeurs Mobilières, marché boursier de l'UEMOA).
+
+Sources de données :
+  - brvm.org        : cotations officielles, sociétés, dividendes, PDF BOC
+  - afx.kwayisi.org : volumes, fondamentaux par ticker, historique HTML, indices sectoriels
+  - richbourse.com  : cours veille, capitalisation par titre
+  - sikafinance.com : OHLC (ouverture/haut/bas)
+
+Transports disponibles (variable MCP_TRANSPORT) :
+  stdio            → Claude Desktop / Claude Code (défaut)
+  streamable-http  → API HTTP, Docker, réseau local
+  sse              → Server-Sent Events, clients MCP legacy
+
+Note sur l'async : FastMCP utilise anyio en interne et exécute automatiquement
+les outils `def` synchrones dans un thread pool (anyio.to_thread.run_sync).
+Les outils sont donc définis comme des fonctions synchrones ordinaires — c'est
+le pattern recommandé pour éviter tout conflit asyncio/anyio.
+
+AVERTISSEMENT : outil d'information et d'analyse. Ne constitue pas un conseil
+en investissement. Le conseil en investissement est une activité réglementée
+dans l'UEMOA (agrément AMF-UMOA requis).
+"""
+
+import json
+import logging
+import os
+
+from mcp.server.fastmcp import FastMCP
+
+from brvm_scraper import (
+    get_quotes,
+    get_market_summary,
+    list_companies,
+    get_company,
+    get_dividend_announcements,
+    compute_dividend_yield,
+    PAYS_SLUGS,
+    get_quotes_afx,
+    get_fundamentals_afx,
+    get_history_afx,
+    get_sector_indices_afx,
+    get_quotes_richbourse,
+    get_quotes_sikafinance,
+    get_dividends_sikafinance,
+)
+from brvm_scraper.storage import get_price_history, get_performance, db_stats
+from brvm_scraper.fundamentals import get_fundamentals, diagnose_pdf
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+log = logging.getLogger("brvm-mcp")
+
+mcp = FastMCP("brvm")
+
+DISCLAIMER = (
+    "Données publiques BRVM fournies à titre informatif. "
+    "Ne constitue pas un conseil en investissement (activité réglementée AMF-UMOA). "
+    "Les performances passées ne préjugent pas des performances futures."
+)
+
+
+def _ok(data) -> str:
+    return json.dumps(
+        {"data": data, "avertissement": DISCLAIMER},
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
+def _err(msg: str) -> str:
+    return json.dumps({"erreur": msg}, ensure_ascii=False)
+
+
+# =============================================================================
+# OUTILS BRVM.ORG — SOURCE OFFICIELLE
+# =============================================================================
+
+
+@mcp.tool()
+def brvm_market_summary() -> str:
+    """
+    Vue d'ensemble du marché BRVM : valeur des indices (BRVM-Composite,
+    BRVM-30, BRVM-Prestige), capitalisation boursière, valeur des
+    transactions du jour, et les 5 plus fortes hausses / baisses.
+    À utiliser pour prendre le pouls général du marché.
+    """
+    try:
+        return _ok(get_market_summary())
+    except Exception as e:
+        log.exception("market_summary")
+        return _err(f"Échec récupération du résumé marché : {e}")
+
+
+@mcp.tool()
+def brvm_quotes(ticker: str = "") -> str:
+    """
+    Cotations de la BRVM : cours en FCFA et variation en % de la séance.
+
+    Args:
+        ticker: symbole d'une société (ex: SNTS, ONTBF, CBIBF, BOABF).
+                Laisser vide pour obtenir les 47 titres cotés.
+    """
+    try:
+        q = get_quotes(ticker or None)
+        if ticker and not q:
+            return _err(f"Ticker '{ticker}' introuvable. Appelez brvm_quotes() sans argument pour la liste complète.")
+        return _ok(q)
+    except Exception as e:
+        log.exception("quotes")
+        return _err(f"Échec récupération des cotations : {e}")
+
+
+@mcp.tool()
+def brvm_list_companies(pays: str = "") -> str:
+    """
+    Liste des sociétés cotées à la BRVM avec leurs coordonnées et le lien
+    vers leur fiche officielle.
+
+    Args:
+        pays: filtre optionnel. Valeurs acceptées : Bénin, Burkina Faso,
+              Côte d'Ivoire, Guinée Bissau, Mali, Niger, Sénégal, Togo.
+    """
+    try:
+        return _ok(list_companies(pays or None))
+    except ValueError as e:
+        return _err(f"{e}")
+    except Exception as e:
+        log.exception("list_companies")
+        return _err(f"Échec récupération des sociétés : {e}")
+
+
+@mcp.tool()
+def brvm_company_details(slug: str) -> str:
+    """
+    Fiche détaillée d'une société cotée, incluant les liens vers ses
+    documents PDF publiés (rapports annuels, communiqués).
+
+    Args:
+        slug: identifiant de la société tel que renvoyé par
+              brvm_list_companies (ex: 'bank-africa-burkina-faso').
+    """
+    try:
+        return _ok(get_company(slug))
+    except Exception as e:
+        log.exception("company_details")
+        return _err(f"Échec récupération de la fiche '{slug}' : {e}")
+
+
+@mcp.tool()
+def brvm_dividends() -> str:
+    """
+    Annonces de paiement de dividendes à venir : émetteur, ticker,
+    date de paiement, montant en FCFA par action.
+    """
+    try:
+        return _ok(get_dividend_announcements())
+    except Exception as e:
+        log.exception("dividends")
+        return _err(f"Échec récupération des dividendes : {e}")
+
+
+@mcp.tool()
+def brvm_dividend_yield() -> str:
+    """
+    Rendement du dividende par société : dividende annoncé / cours actuel,
+    classé du plus élevé au plus faible. Indicateur clé sur la BRVM, qui est
+    avant tout un marché de rendement.
+
+    Note : le calcul se base sur une annonce de dividende. Certaines sociétés
+    versent un acompte puis un solde ; le rendement annuel réel peut être
+    supérieur. Vérifier dans le rapport annuel de la société.
+    """
+    try:
+        return _ok(compute_dividend_yield())
+    except Exception as e:
+        log.exception("dividend_yield")
+        return _err(f"Échec calcul des rendements : {e}")
+
+
+@mcp.tool()
+def brvm_price_history(symbole: str, limit: int = 90) -> str:
+    """
+    Historique des cours d'un titre (nécessite d'avoir historisé via snapshot.py).
+    Renvoie les cours du plus récent au plus ancien.
+
+    Args:
+        symbole: ticker (ex: SNTS, ONTBF, CBIBF).
+        limit: nombre maximum de séances à renvoyer (défaut 90).
+    """
+    try:
+        hist = get_price_history(symbole, limit)
+        if not hist:
+            return _err(
+                f"Aucun historique pour '{symbole}'. La base se remplit jour "
+                f"après jour via snapshot.py — patientez quelques séances."
+            )
+        return _ok(hist)
+    except Exception as e:
+        log.exception("price_history")
+        return _err(f"Échec lecture historique : {e}")
+
+
+@mcp.tool()
+def brvm_performance(symbole: str) -> str:
+    """
+    Performance d'un titre sur toute la période historisée : variation en FCFA
+    et en %, entre le premier et le dernier cours enregistré en base.
+
+    Args:
+        symbole: ticker (ex: SNTS, ONTBF, CBIBF).
+    """
+    try:
+        perf = get_performance(symbole)
+        if not perf:
+            return _err(
+                f"Pas assez d'historique pour '{symbole}' (2 séances minimum)."
+            )
+        return _ok(perf)
+    except Exception as e:
+        log.exception("performance")
+        return _err(f"Échec calcul performance : {e}")
+
+
+@mcp.tool()
+def brvm_history_status() -> str:
+    """
+    État de la base d'historique : profondeur (première/dernière séance),
+    nombre de séances couvertes, titres suivis. Utile pour savoir si l'on a
+    assez de recul pour analyser des tendances.
+    """
+    try:
+        return _ok(db_stats())
+    except Exception as e:
+        log.exception("history_status")
+        return _err(f"Échec lecture de l'état de la base : {e}")
+
+
+@mcp.tool()
+def brvm_fundamentals(pdf_url: str) -> str:
+    """
+    Extrait les données fondamentales par société (PER, rendement, capitalisation,
+    BPA) depuis un PDF de la BRVM : Bulletin Officiel de la Cote ou rapport annuel.
+
+    Le PER (cours / bénéfice par action) mesure la cherté d'une action : bas = bon
+    marché, élevé = cher. À comparer entre sociétés d'un même secteur.
+
+    Args:
+        pdf_url: URL du PDF. Récupérable via brvm_company_details
+                 (champ 'documents_pdf') ou depuis la rubrique BOC du site.
+    """
+    try:
+        data = get_fundamentals(pdf_url)
+        if not data:
+            return _err(
+                "Aucun tableau de fondamentaux détecté dans ce PDF. "
+                "Lancez brvm_diagnose_pdf sur la même URL pour inspecter sa structure."
+            )
+        return _ok(data)
+    except Exception as e:
+        log.exception("fundamentals")
+        return _err(f"Échec extraction des fondamentaux : {e}")
+
+
+@mcp.tool()
+def brvm_diagnose_pdf(pdf_url: str) -> str:
+    """
+    Outil de diagnostic/calibrage : montre ce que l'extracteur voit dans un PDF
+    (nombre de tableaux, en-têtes, colonnes détectées, aperçu du texte). À utiliser
+    si brvm_fundamentals ne trouve rien, pour comprendre la structure du document.
+
+    Args:
+        pdf_url: URL du PDF à inspecter.
+    """
+    try:
+        return _ok(diagnose_pdf(pdf_url))
+    except Exception as e:
+        log.exception("diagnose_pdf")
+        return _err(f"Échec du diagnostic PDF : {e}")
+
+
+# =============================================================================
+# OUTILS SOURCES COMPLÉMENTAIRES
+# =============================================================================
+
+
+@mcp.tool()
+def brvm_volumes(ticker: str = "") -> str:
+    """
+    Volumes d'échange depuis AFX Kwayisi — absents de brvm.org.
+    Indispensable pour évaluer la liquidité d'un titre avant d'y investir.
+
+    Args:
+        ticker: symbole (ex: SNTS, ETIT). Vide = tous les titres.
+    """
+    try:
+        data = get_quotes_afx()
+        if ticker:
+            t = ticker.strip().upper()
+            data = [q for q in data if q["symbole"] == t]
+            if not data:
+                return _err(f"Ticker '{ticker}' introuvable sur AFX Kwayisi.")
+        return _ok(data)
+    except Exception as e:
+        log.exception("volumes")
+        return _err(f"Échec récupération des volumes : {e}")
+
+
+@mcp.tool()
+def brvm_fondamentaux_ticker(ticker: str) -> str:
+    """
+    Fondamentaux d'un titre depuis AFX Kwayisi — sans télécharger de PDF.
+
+    Retourne : PER, BPA (bénéfice par action), dividende par action,
+    rendement du dividende, actions en circulation, capitalisation boursière.
+
+    Le PER mesure la cherté d'une action : PER bas = bon marché,
+    PER élevé = cher. À comparer entre sociétés du même secteur.
+
+    Args:
+        ticker: symbole (ex: SNTS, ONTBF, CBIBF).
+    """
+    try:
+        return _ok(get_fundamentals_afx(ticker))
+    except Exception as e:
+        log.exception("fondamentaux_ticker")
+        return _err(f"Échec récupération des fondamentaux de '{ticker}' : {e}")
+
+
+@mcp.tool()
+def brvm_historique_avec_volumes(ticker: str) -> str:
+    """
+    Historique des 10 dernières séances d'un titre avec volumes, depuis AFX Kwayisi.
+
+    Complète brvm_price_history (base locale) en ajoutant les volumes
+    et sans nécessiter d'avoir fait tourner snapshot.py au préalable.
+
+    Args:
+        ticker: symbole (ex: SNTS, ONTBF, CBIBF).
+    """
+    try:
+        data = get_history_afx(ticker)
+        if not data:
+            return _err(f"Aucun historique trouvé pour '{ticker}' sur AFX Kwayisi.")
+        return _ok(data)
+    except Exception as e:
+        log.exception("historique_avec_volumes")
+        return _err(f"Échec lecture historique AFX de '{ticker}' : {e}")
+
+
+@mcp.tool()
+def brvm_indices_sectoriels() -> str:
+    """
+    Indices sectoriels BRVM depuis AFX Kwayisi.
+
+    Expose les performances jour / 1 semaine / YTD par secteur :
+    Energie, Services Financiers, Public Utilities, etc.
+    Absents de brvm.org qui ne publie que BRVM-C, BRVM-30 et BRVM-Prestige.
+    """
+    try:
+        return _ok(get_sector_indices_afx())
+    except Exception as e:
+        log.exception("indices_sectoriels")
+        return _err(f"Échec récupération des indices sectoriels : {e}")
+
+
+@mcp.tool()
+def brvm_cotations_enrichies() -> str:
+    """
+    Cotations enrichies depuis Rich Bourse.
+
+    En plus du cours du jour, retourne pour chaque titre :
+      - cours_veille_fcfa : cours de clôture de la veille
+      - capitalisation_fcfa : capitalisation boursière
+      - volume et valeur des transactions
+
+    Utile pour croiser avec les cotations officielles brvm.org.
+    """
+    try:
+        return _ok(get_quotes_richbourse())
+    except Exception as e:
+        log.exception("cotations_enrichies")
+        return _err(f"Échec récupération des cotations Rich Bourse : {e}")
+
+
+@mcp.tool()
+def brvm_ohlc() -> str:
+    """
+    Cotations OHLC (Open/High/Low/Close) depuis Sika Finance.
+
+    Retourne pour chaque titre :
+      ouverture, plus haut, plus bas, clôture, volume titres, volume XOF.
+
+    Ces données intraday sont absentes de brvm.org.
+    Rappel : la BRVM fonctionne en séance unique (fixing ~10h45 GMT),
+    donc le haut et le bas reflètent les ordres de la séance, pas du temps réel.
+    """
+    try:
+        return _ok(get_quotes_sikafinance())
+    except Exception as e:
+        log.exception("ohlc")
+        return _err(f"Échec récupération des données OHLC : {e}")
+
+
+@mcp.tool()
+def brvm_dividendes_sikafinance() -> str:
+    """
+    Dividendes à venir depuis Sika Finance (source complémentaire à brvm.org).
+
+    Utile pour croiser avec brvm_dividends() afin de ne manquer aucune annonce.
+    """
+    try:
+        return _ok(get_dividends_sikafinance())
+    except Exception as e:
+        log.exception("dividendes_sikafinance")
+        return _err(f"Échec récupération des dividendes Sika Finance : {e}")
+
+
+# =============================================================================
+# POINT D'ENTRÉE — SÉLECTION DU TRANSPORT PAR VARIABLE D'ENVIRONNEMENT
+# =============================================================================
+
+def main():
+    transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
+    host = os.getenv("MCP_HOST", "0.0.0.0")
+    port = int(os.getenv("MCP_PORT", "8000"))
+
+    log.info(f"Démarrage brvm-mcp — transport={transport}")
+
+    if transport == "stdio":
+        mcp.run(transport="stdio")
+    elif transport in ("streamable-http", "sse"):
+        log.info(f"Écoute sur http://{host}:{port}")
+        mcp.run(transport=transport, host=host, port=port)
+    else:
+        log.error(
+            f"Transport inconnu : {transport!r}. "
+            "Valeurs acceptées : stdio | streamable-http | sse"
+        )
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()

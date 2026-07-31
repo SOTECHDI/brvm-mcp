@@ -1,0 +1,12 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties: {}
+    required: []
+  commandFunction: |-
+    (config) => ({
+      command: "uvx",
+      args: ["--from", "git+https://github.com/dondirechristian/brvm-mcp", "brvm-mcp"],
+      env: {}
+    })

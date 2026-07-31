@@ -1,0 +1,36 @@
+services:
+  brvm-mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # La base SQLite survit aux redémarrages du conteneur
+      - brvm_data:/data
+    environment:
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "8000"
+      BRVM_DB: /data/brvm_history.db
+    restart: unless-stopped
+
+  # Snapshot quotidien : cron interne qui appelle snapshot.py chaque jour
+  # à 12h00 UTC (après le fixing BRVM ~10h45 GMT)
+  brvm-snapshot:
+    build: .
+    volumes:
+      - brvm_data:/data
+    environment:
+      BRVM_DB: /data/brvm_history.db
+    # Utilise supercronic (cron compatible containers, sans démon)
+    entrypoint: >
+      sh -c "
+        pip install supercronic --quiet &&
+        echo '0 12 * * 1-5 python /app/snapshot.py' > /tmp/crontab &&
+        supercronic /tmp/crontab
+      "
+    restart: unless-stopped
+    depends_on:
+      - brvm-mcp
+
+volumes:
+  brvm_data:

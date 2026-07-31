@@ -1,0 +1,27 @@
+# Environnement virtuel Python (rebuild dans l'image)
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Base SQLite locale (sera dans un volume Docker en prod)
+*.db
+
+# Secrets
+.env
+
+# Tests et scripts de debug
+tests/
+debug_*.py
+
+# Agent LangGraph (optionnel, non inclus dans l'image MCP)
+agent/
+requirements-agent.txt
+
+# Git
+.git/
+.gitignore
+
+# Fixtures et données temporaires
+*.pdf
