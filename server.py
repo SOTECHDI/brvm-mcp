@@ -29,6 +29,8 @@ import os
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from brvm_scraper import (
     get_quotes,
@@ -59,6 +61,35 @@ DISCLAIMER = (
     "Ne constitue pas un conseil en investissement (activité réglementée AMF-UMOA). "
     "Les performances passées ne préjugent pas des performances futures."
 )
+
+
+@mcp.custom_route("/.well-known/mcp/server-card.json", methods=["GET"])
+async def server_card(request: Request) -> JSONResponse:
+    """Smithery server card — permet la découverte sans scan OAuth."""
+    return JSONResponse({
+        "name": "brvm-mcp",
+        "description": "MCP server exposing BRVM (West African stock exchange) public data via 18 tools aggregating 4 sources: brvm.org, AFX Kwayisi, Rich Bourse, Sika Finance.",
+        "tools": [
+            {"name": "brvm_market_summary", "description": "Market overview: BRVM-C, BRVM-30, BRVM-Prestige indices, market cap, top/worst movers"},
+            {"name": "brvm_quotes", "description": "Prices (FCFA) and % change — all 47 tickers or a specific one"},
+            {"name": "brvm_list_companies", "description": "Listed companies, filterable by country"},
+            {"name": "brvm_company_details", "description": "Company profile + PDF document links"},
+            {"name": "brvm_dividends", "description": "Upcoming dividend payments"},
+            {"name": "brvm_dividend_yield", "description": "Dividend yield ranked highest first"},
+            {"name": "brvm_price_history", "description": "Historical prices from local SQLite database"},
+            {"name": "brvm_performance", "description": "Price performance over the tracked period"},
+            {"name": "brvm_history_status", "description": "Database depth and coverage"},
+            {"name": "brvm_fundamentals", "description": "P/E ratio, EPS, market cap from BOC PDF"},
+            {"name": "brvm_diagnose_pdf", "description": "PDF structure diagnostic"},
+            {"name": "brvm_volumes", "description": "Trading volumes from AFX Kwayisi (absent from brvm.org)"},
+            {"name": "brvm_fondamentaux_ticker", "description": "P/E, EPS, dividend yield per ticker — no PDF needed"},
+            {"name": "brvm_historique_avec_volumes", "description": "Last 10 sessions with volumes"},
+            {"name": "brvm_indices_sectoriels", "description": "Sector indices: Energy, Financial Services, Public Utilities (day/1WK/YTD)"},
+            {"name": "brvm_cotations_enrichies", "description": "Previous close + market cap per ticker (Rich Bourse)"},
+            {"name": "brvm_ohlc", "description": "Open/High/Low/Close + volumes (Sika Finance)"},
+            {"name": "brvm_dividendes_sikafinance", "description": "Cross-check dividend announcements (Sika Finance)"},
+        ]
+    })
 
 
 def _ok(data) -> str:
