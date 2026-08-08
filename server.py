@@ -430,8 +430,11 @@ def main():
     if transport == "stdio":
         mcp.run(transport="stdio")
     elif transport in ("streamable-http", "sse"):
+        # Dans mcp>=1.28, host/port se configurent via mcp.settings
+        mcp.settings.host = host
+        mcp.settings.port = port
         log.info(f"Écoute sur http://{host}:{port}")
-        mcp.run(transport=transport, host=host, port=port)
+        mcp.run(transport=transport)
     else:
         log.error(
             f"Transport inconnu : {transport!r}. "
