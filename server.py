@@ -423,7 +423,8 @@ def brvm_dividendes_sikafinance() -> str:
 def main():
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
     host = os.getenv("MCP_HOST", "0.0.0.0")
-    port = int(os.getenv("MCP_PORT", "8000"))
+    # Railway injecte $PORT automatiquement — priorité sur MCP_PORT
+    port = int(os.getenv("PORT", os.getenv("MCP_PORT", "8000")))
 
     log.info(f"Démarrage brvm-mcp — transport={transport}")
 
