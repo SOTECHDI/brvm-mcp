@@ -28,6 +28,7 @@ import logging
 import os
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from brvm_scraper import (
     get_quotes,
@@ -434,6 +435,11 @@ def main():
         # Dans mcp>=1.28, host/port se configurent via mcp.settings
         mcp.settings.host = host
         mcp.settings.port = port
+        # Désactiver la protection DNS rebinding localhost-only pour les
+        # déploiements cloud (Railway, Fly.io, etc.) — le TLS du proxy suffit
+        mcp.settings.transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=False
+        )
         log.info(f"Écoute sur http://{host}:{port}")
         mcp.run(transport=transport)
     else:
