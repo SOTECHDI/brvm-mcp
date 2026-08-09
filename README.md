@@ -1,5 +1,7 @@
 # brvm-mcp
 
+[![smithery badge](https://smithery.ai/badge/dondirechristian/brvm-mcp)](https://smithery.ai/server/dondirechristian/brvm-mcp)
+
 MCP server giving AI assistants access to **BRVM** public data — the West African regional stock exchange serving 8 UEMOA countries (Benin, Burkina Faso, Côte d'Ivoire, Guinea-Bissau, Mali, Niger, Senegal, Togo).
 
 The BRVM publishes no public API. This server aggregates **4 data sources** into **18 MCP tools** so any AI assistant (Claude Desktop, Claude Code, etc.) can query real-time market data, fundamentals, dividends, volumes, and sector indices.
@@ -142,6 +144,14 @@ brvm-mcp/
 
 ---
 
+## Community
+
+Questions, feedback, or ideas? Open a [GitHub Discussion](https://github.com/dondirechristian/brvm-mcp/discussions) — or join the WhatsApp group for French-speaking users (Burkina Faso, Côte d'Ivoire, Sénégal…): **[coming soon]**
+
+If this server is useful to you, a ⭐ on GitHub helps others find it — thank you!
+
+---
+
 ## License
 
-MIT — © 2025 Christian Dondire
+MIT — © 2026 Christian Dondire
