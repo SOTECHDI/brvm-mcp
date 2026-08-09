@@ -7,6 +7,6 @@ startCommand:
   commandFunction: |-
     (config) => ({
       command: "uvx",
-      args: ["--from", "git+https://github.com/dondirechristian/brvm-mcp", "brvm-mcp"],
+      args: ["--from", "git+https://github.com/sotechdi/brvm-mcp", "brvm-mcp"],
       env: {}
     })

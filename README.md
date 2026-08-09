@@ -1,6 +1,6 @@
 # brvm-mcp
 
-[![smithery badge](https://smithery.ai/badge/dondirechristian/brvm-mcp)](https://smithery.ai/server/dondirechristian/brvm-mcp)
+[![smithery badge](https://smithery.ai/badge/sotechdi/brvm-mcp)](https://smithery.ai/server/sotechdi/brvm-mcp)
 
 MCP server giving AI assistants access to **BRVM** public data — the West African regional stock exchange serving 8 UEMOA countries (Benin, Burkina Faso, Côte d'Ivoire, Guinea-Bissau, Mali, Niger, Senegal, Togo).
 
@@ -53,7 +53,7 @@ Add to `claude_desktop_config.json`:
   "mcpServers": {
     "brvm": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/dondirechristian/brvm-mcp", "brvm-mcp"]
+      "args": ["--from", "git+https://github.com/sotechdi/brvm-mcp", "brvm-mcp"]
     }
   }
 }
@@ -69,13 +69,13 @@ Restart Claude Desktop. Then ask: *"What are the BRVM stocks with the highest di
 ### Claude Code
 
 ```bash
-claude mcp add brvm -- uvx --from git+https://github.com/dondirechristian/brvm-mcp brvm-mcp
+claude mcp add brvm -- uvx --from git+https://github.com/sotechdi/brvm-mcp brvm-mcp
 ```
 
 ### Manual install (pip)
 
 ```bash
-git clone https://github.com/dondirechristian/brvm-mcp.git
+git clone https://github.com/sotechdi/brvm-mcp.git
 cd brvm-mcp
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
@@ -146,7 +146,7 @@ brvm-mcp/
 
 ## Community
 
-Questions, feedback, or ideas? Open a [GitHub Discussion](https://github.com/dondirechristian/brvm-mcp/discussions) — or join the WhatsApp group for French-speaking users (Burkina Faso, Côte d'Ivoire, Sénégal…): **[coming soon]**
+Questions, feedback, or ideas? Open a [GitHub Discussion](https://github.com/sotechdi/brvm-mcp/discussions) — or join the WhatsApp group for French-speaking users (Burkina Faso, Côte d'Ivoire, Sénégal…): **[coming soon]**
 
 If this server is useful to you, a ⭐ on GitHub helps others find it — thank you!
 
