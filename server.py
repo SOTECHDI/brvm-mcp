@@ -546,28 +546,22 @@ def main():
         )
         log.info(f"Écoute sur http://{host}:{port} — rate limit: 25 appels/jour (tier gratuit)")
 
-        # Injection du rate limiting au niveau ASGI, avant que Starlette ne touche
-        # la requête. On patche uvicorn.Config.__init__ car FastMCP peut utiliser
-        # uvicorn.run() OU uvicorn.Server(uvicorn.Config(...)) selon sa version.
-        import uvicorn as _uvicorn
-        _orig_config_init = _uvicorn.Config.__init__
-        _rl_active = [False]
+        # Injection du rate limiting : on intercepte streamable_http_app() sur
+        # l'instance mcp, qui est appelée par run_streamable_http_async() juste
+        # avant de créer le uvicorn.Config. On enveloppe l'app Starlette retournée
+        # avec _RateLimitASGI qui extrait le contexte client à chaque requête.
+        _orig_http_app = mcp.streamable_http_app
 
-        def _patched_config_init(self, app, **kwargs):
-            # Enveloppe l'app ASGI avec notre intercepteur si pas déjà fait
-            if not isinstance(app, _RateLimitASGI):
-                app = _RateLimitASGI(app)
-                _rl_active[0] = True
-                log.info("✅ Rate limiting ASGI activé (25 appels/jour, gratuit)")
-            _orig_config_init(self, app, **kwargs)
+        def _wrapped_http_app():
+            starlette_app = _orig_http_app()
+            log.info("✅ Rate limiting ASGI activé (25 appels/jour, gratuit)")
+            return _RateLimitASGI(starlette_app)
 
-        _uvicorn.Config.__init__ = _patched_config_init
+        mcp.streamable_http_app = _wrapped_http_app
         try:
             mcp.run(transport=transport)
         finally:
-            _uvicorn.Config.__init__ = _orig_config_init
-            if not _rl_active[0]:
-                log.warning("⚠️  Rate limiting non activé (uvicorn.Config non intercepté)")
+            mcp.streamable_http_app = _orig_http_app
     else:
         log.error(
             f"Transport inconnu : {transport!r}. "
