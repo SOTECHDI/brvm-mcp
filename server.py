@@ -544,24 +544,26 @@ def main():
         mcp.settings.transport_security = TransportSecuritySettings(
             enable_dns_rebinding_protection=False
         )
-        log.info(f"Écoute sur http://{host}:{port} — rate limit: 25 appels/jour (tier gratuit)")
+        log.info(f"Listen on http://{host}:{port} - rate limit 25 calls/day free tier")
 
-        # Injection du rate limiting : on intercepte streamable_http_app() sur
-        # l'instance mcp, qui est appelée par run_streamable_http_async() juste
-        # avant de créer le uvicorn.Config. On enveloppe l'app Starlette retournée
-        # avec _RateLimitASGI qui extrait le contexte client à chaque requête.
-        _orig_http_app = mcp.streamable_http_app
+        # Patch au niveau de la CLASSE FastMCP (pas de l'instance) pour garantir
+        # que l'interception fonctionne quel que soit le chemin d'appel interne.
+        # FastMCP.run_streamable_http_async() appelle self.streamable_http_app()
+        # -> on enveloppe l'app Starlette retournee avec _RateLimitASGI.
+        from mcp.server.fastmcp.server import FastMCP as _FastMCPClass
+        _orig_shttp_app = _FastMCPClass.streamable_http_app
 
-        def _wrapped_http_app():
-            starlette_app = _orig_http_app()
-            log.info("✅ Rate limiting ASGI activé (25 appels/jour, gratuit)")
+        def _patched_shttp_app(inner_self):
+            log.info("[RL] streamable_http_app hooked - installing rate limit wrapper")
+            starlette_app = _orig_shttp_app(inner_self)
+            log.info("[RL] rate limiting ASGI wrapper ACTIVE (25 calls/day free)")
             return _RateLimitASGI(starlette_app)
 
-        mcp.streamable_http_app = _wrapped_http_app
+        _FastMCPClass.streamable_http_app = _patched_shttp_app
         try:
             mcp.run(transport=transport)
         finally:
-            mcp.streamable_http_app = _orig_http_app
+            _FastMCPClass.streamable_http_app = _orig_shttp_app
     else:
         log.error(
             f"Transport inconnu : {transport!r}. "
