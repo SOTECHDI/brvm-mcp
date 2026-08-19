@@ -1,7 +1,7 @@
 # brvm-mcp
 
 [![smithery badge](https://smithery.ai/badge/sotechdi/brvm-mcp)](https://smithery.ai/server/sotechdi/brvm-mcp)
-[![M8ven Score](https://m8ven.ai/badge/mcp/sotechdi-brvm-mcp-1iuft0?v=6d316c2f82758aa64f83cf8f79a77e5d)](https://m8ven.ai/mcp/sotechdi-brvm-mcp-1iuft0)
+[![M8ven Live Monitored](https://m8ven.ai/badge/mcp/sotechdi-brvm-mcp-1iuft0)](https://m8ven.ai/mcp/sotechdi-brvm-mcp-1iuft0)
 
 MCP server giving AI assistants access to **BRVM** public data — the West African regional stock exchange serving 8 UEMOA countries (Benin, Burkina Faso, Côte d'Ivoire, Guinea-Bissau, Mali, Niger, Senegal, Togo).
 
