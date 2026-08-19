@@ -29,8 +29,15 @@ import os
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+
+from brvm_scraper.rate_limiter import (
+    current_identifier,
+    check_rate_limit,
+    rate_limit_error,
+)
 
 from brvm_scraper import (
     get_quotes,
@@ -55,6 +62,33 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger("brvm-mcp")
 
 mcp = FastMCP("brvm")
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Extrait l'IP du client et la stocke dans current_identifier."""
+    async def dispatch(self, request: Request, call_next):
+        forwarded = request.headers.get("x-forwarded-for", "")
+        ip = forwarded.split(",")[0].strip() if forwarded else (
+            request.client.host if request.client else "unknown"
+        )
+        current_identifier.set(ip)
+        return await call_next(request)
+
+
+def _rl() -> str | None:
+    """
+    Vérifie la limite de taux pour le client courant.
+    Retourne un message d'erreur JSON si la limite est dépassée, None sinon.
+    En mode stdio (identifier=None), aucune limite n'est appliquée.
+    """
+    identifier = current_identifier.get()
+    if not identifier:
+        return None  # mode stdio — pas de limite
+    result = check_rate_limit(identifier)
+    if not result["allowed"]:
+        log.warning(f"Rate limit atteint pour {identifier}")
+        return rate_limit_error()
+    return None
 
 DISCLAIMER = (
     "Données publiques BRVM fournies à titre informatif. "
@@ -117,6 +151,7 @@ def brvm_market_summary() -> str:
     transactions du jour, et les 5 plus fortes hausses / baisses.
     À utiliser pour prendre le pouls général du marché.
     """
+    if err := _rl(): return err
     try:
         return _ok(get_market_summary())
     except Exception as e:
@@ -133,6 +168,7 @@ def brvm_quotes(ticker: str = "") -> str:
         ticker: symbole d'une société (ex: SNTS, ONTBF, CBIBF, BOABF).
                 Laisser vide pour obtenir les 47 titres cotés.
     """
+    if err := _rl(): return err
     try:
         q = get_quotes(ticker or None)
         if ticker and not q:
@@ -153,6 +189,7 @@ def brvm_list_companies(pays: str = "") -> str:
         pays: filtre optionnel. Valeurs acceptées : Bénin, Burkina Faso,
               Côte d'Ivoire, Guinée Bissau, Mali, Niger, Sénégal, Togo.
     """
+    if err := _rl(): return err
     try:
         return _ok(list_companies(pays or None))
     except ValueError as e:
@@ -172,6 +209,7 @@ def brvm_company_details(slug: str) -> str:
         slug: identifiant de la société tel que renvoyé par
               brvm_list_companies (ex: 'bank-africa-burkina-faso').
     """
+    if err := _rl(): return err
     try:
         return _ok(get_company(slug))
     except Exception as e:
@@ -185,6 +223,7 @@ def brvm_dividends() -> str:
     Annonces de paiement de dividendes à venir : émetteur, ticker,
     date de paiement, montant en FCFA par action.
     """
+    if err := _rl(): return err
     try:
         return _ok(get_dividend_announcements())
     except Exception as e:
@@ -203,6 +242,7 @@ def brvm_dividend_yield() -> str:
     versent un acompte puis un solde ; le rendement annuel réel peut être
     supérieur. Vérifier dans le rapport annuel de la société.
     """
+    if err := _rl(): return err
     try:
         return _ok(compute_dividend_yield())
     except Exception as e:
@@ -220,6 +260,7 @@ def brvm_price_history(symbole: str, limit: int = 90) -> str:
         symbole: ticker (ex: SNTS, ONTBF, CBIBF).
         limit: nombre maximum de séances à renvoyer (défaut 90).
     """
+    if err := _rl(): return err
     try:
         hist = get_price_history(symbole, limit)
         if not hist:
@@ -242,6 +283,7 @@ def brvm_performance(symbole: str) -> str:
     Args:
         symbole: ticker (ex: SNTS, ONTBF, CBIBF).
     """
+    if err := _rl(): return err
     try:
         perf = get_performance(symbole)
         if not perf:
@@ -261,6 +303,7 @@ def brvm_history_status() -> str:
     nombre de séances couvertes, titres suivis. Utile pour savoir si l'on a
     assez de recul pour analyser des tendances.
     """
+    if err := _rl(): return err
     try:
         return _ok(db_stats())
     except Exception as e:
@@ -281,6 +324,7 @@ def brvm_fundamentals(pdf_url: str) -> str:
         pdf_url: URL du PDF. Récupérable via brvm_company_details
                  (champ 'documents_pdf') ou depuis la rubrique BOC du site.
     """
+    if err := _rl(): return err
     try:
         data = get_fundamentals(pdf_url)
         if not data:
@@ -304,6 +348,7 @@ def brvm_diagnose_pdf(pdf_url: str) -> str:
     Args:
         pdf_url: URL du PDF à inspecter.
     """
+    if err := _rl(): return err
     try:
         return _ok(diagnose_pdf(pdf_url))
     except Exception as e:
@@ -325,6 +370,7 @@ def brvm_volumes(ticker: str = "") -> str:
     Args:
         ticker: symbole (ex: SNTS, ETIT). Vide = tous les titres.
     """
+    if err := _rl(): return err
     try:
         data = get_quotes_afx()
         if ticker:
@@ -352,6 +398,7 @@ def brvm_fondamentaux_ticker(ticker: str) -> str:
     Args:
         ticker: symbole (ex: SNTS, ONTBF, CBIBF).
     """
+    if err := _rl(): return err
     try:
         return _ok(get_fundamentals_afx(ticker))
     except Exception as e:
@@ -370,6 +417,7 @@ def brvm_historique_avec_volumes(ticker: str) -> str:
     Args:
         ticker: symbole (ex: SNTS, ONTBF, CBIBF).
     """
+    if err := _rl(): return err
     try:
         data = get_history_afx(ticker)
         if not data:
@@ -389,6 +437,7 @@ def brvm_indices_sectoriels() -> str:
     Energie, Services Financiers, Public Utilities, etc.
     Absents de brvm.org qui ne publie que BRVM-C, BRVM-30 et BRVM-Prestige.
     """
+    if err := _rl(): return err
     try:
         return _ok(get_sector_indices_afx())
     except Exception as e:
@@ -408,6 +457,7 @@ def brvm_cotations_enrichies() -> str:
 
     Utile pour croiser avec les cotations officielles brvm.org.
     """
+    if err := _rl(): return err
     try:
         return _ok(get_quotes_richbourse())
     except Exception as e:
@@ -427,6 +477,7 @@ def brvm_ohlc() -> str:
     Rappel : la BRVM fonctionne en séance unique (fixing ~10h45 GMT),
     donc le haut et le bas reflètent les ordres de la séance, pas du temps réel.
     """
+    if err := _rl(): return err
     try:
         return _ok(get_quotes_sikafinance())
     except Exception as e:
@@ -441,6 +492,7 @@ def brvm_dividendes_sikafinance() -> str:
 
     Utile pour croiser avec brvm_dividends() afin de ne manquer aucune annonce.
     """
+    if err := _rl(): return err
     try:
         return _ok(get_dividends_sikafinance())
     except Exception as e:
@@ -471,8 +523,17 @@ def main():
         mcp.settings.transport_security = TransportSecuritySettings(
             enable_dns_rebinding_protection=False
         )
-        log.info(f"Écoute sur http://{host}:{port}")
-        mcp.run(transport=transport)
+        log.info(f"Écoute sur http://{host}:{port} — rate limit: 25 appels/jour (tier gratuit)")
+        # Injection du middleware de rate limiting
+        try:
+            import uvicorn
+            starlette_app = mcp.get_app(transport=transport)
+            starlette_app.add_middleware(RateLimitMiddleware)
+            uvicorn.run(starlette_app, host=host, port=port)
+        except (AttributeError, TypeError):
+            # Fallback si get_app() n'est pas disponible dans cette version
+            log.warning("Middleware rate limiting non activé (get_app() indisponible) — fallback sans IP tracking")
+            mcp.run(transport=transport)
     else:
         log.error(
             f"Transport inconnu : {transport!r}. "
