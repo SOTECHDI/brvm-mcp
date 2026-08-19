@@ -65,13 +65,21 @@ mcp = FastMCP("brvm")
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Extrait l'IP du client et la stocke dans current_identifier."""
+    """
+    Extrait l'identifiant du client et le stocke dans current_identifier.
+    Priorité : ?api_key=UUID (Smithery) > X-Forwarded-For > IP directe.
+    """
     async def dispatch(self, request: Request, call_next):
-        forwarded = request.headers.get("x-forwarded-for", "")
-        ip = forwarded.split(",")[0].strip() if forwarded else (
-            request.client.host if request.client else "unknown"
-        )
-        current_identifier.set(ip)
+        # Smithery passe ?api_key=UUID dans l'URL — identifiant stable par utilisateur
+        api_key = request.query_params.get("api_key")
+        if api_key:
+            identifier = f"sk_{api_key}"
+        else:
+            forwarded = request.headers.get("x-forwarded-for", "")
+            identifier = forwarded.split(",")[0].strip() if forwarded else (
+                request.client.host if request.client else "unknown"
+            )
+        current_identifier.set(identifier)
         return await call_next(request)
 
 
@@ -524,16 +532,30 @@ def main():
             enable_dns_rebinding_protection=False
         )
         log.info(f"Écoute sur http://{host}:{port} — rate limit: 25 appels/jour (tier gratuit)")
-        # Injection du middleware de rate limiting
+
+        # Injection du middleware via monkey-patch de uvicorn.run.
+        # FastMCP appelle uvicorn.run(app, ...) en interne — on intercepte l'app
+        # Starlette juste avant le démarrage pour y ajouter notre middleware.
+        import uvicorn as _uvicorn
+        _orig_run = _uvicorn.run
+        _middleware_injected = [False]
+
+        def _patched_run(app, **kwargs):
+            if hasattr(app, "add_middleware"):
+                app.add_middleware(RateLimitMiddleware)
+                _middleware_injected[0] = True
+                log.info("✅ Rate limiting middleware injecté (25 appels/jour, gratuit)")
+            else:
+                log.warning("⚠️  app.add_middleware indisponible — rate limiting HTTP non actif")
+            _orig_run(app, **kwargs)
+
+        _uvicorn.run = _patched_run
         try:
-            import uvicorn
-            starlette_app = mcp.get_app(transport=transport)
-            starlette_app.add_middleware(RateLimitMiddleware)
-            uvicorn.run(starlette_app, host=host, port=port)
-        except (AttributeError, TypeError):
-            # Fallback si get_app() n'est pas disponible dans cette version
-            log.warning("Middleware rate limiting non activé (get_app() indisponible) — fallback sans IP tracking")
             mcp.run(transport=transport)
+        finally:
+            _uvicorn.run = _orig_run
+            if not _middleware_injected[0]:
+                log.warning("⚠️  Middleware rate limiting non activé (uvicorn.run non intercepté)")
     else:
         log.error(
             f"Transport inconnu : {transport!r}. "
