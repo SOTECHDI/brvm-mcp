@@ -29,7 +29,6 @@ import os
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -64,23 +63,37 @@ log = logging.getLogger("brvm-mcp")
 mcp = FastMCP("brvm")
 
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
+class _RateLimitASGI:
     """
-    Extrait l'identifiant du client et le stocke dans current_identifier.
-    Priorité : ?api_key=UUID (Smithery) > X-Forwarded-For > IP directe.
+    Intercepteur ASGI bas niveau — s'insère avant Starlette/FastMCP.
+    Fonctionne que FastMCP appelle uvicorn.run() ou uvicorn.Server+Config.
+
+    Priorité d'identification :
+      1. ?api_key=UUID  (Smithery — identifiant stable par profil utilisateur)
+      2. X-Forwarded-For (proxies)
+      3. IP directe (connexion brute)
     """
-    async def dispatch(self, request: Request, call_next):
-        # Smithery passe ?api_key=UUID dans l'URL — identifiant stable par utilisateur
-        api_key = request.query_params.get("api_key")
-        if api_key:
-            identifier = f"sk_{api_key}"
-        else:
-            forwarded = request.headers.get("x-forwarded-for", "")
-            identifier = forwarded.split(",")[0].strip() if forwarded else (
-                request.client.host if request.client else "unknown"
-            )
-        current_identifier.set(identifier)
-        return await call_next(request)
+    def __init__(self, app):
+        self._app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            from urllib.parse import parse_qs
+            qs = scope.get("query_string", b"").decode("utf-8", errors="ignore")
+            params = parse_qs(qs)
+            api_key_list = params.get("api_key", [])
+            if api_key_list:
+                identifier = f"sk_{api_key_list[0]}"
+            else:
+                headers = dict(scope.get("headers", []))
+                forwarded = headers.get(b"x-forwarded-for", b"").decode()
+                identifier = (
+                    forwarded.split(",")[0].strip()
+                    if forwarded
+                    else (scope["client"][0] if scope.get("client") else "unknown")
+                )
+            current_identifier.set(identifier)
+        await self._app(scope, receive, send)
 
 
 def _rl() -> str | None:
@@ -533,29 +546,28 @@ def main():
         )
         log.info(f"Écoute sur http://{host}:{port} — rate limit: 25 appels/jour (tier gratuit)")
 
-        # Injection du middleware via monkey-patch de uvicorn.run.
-        # FastMCP appelle uvicorn.run(app, ...) en interne — on intercepte l'app
-        # Starlette juste avant le démarrage pour y ajouter notre middleware.
+        # Injection du rate limiting au niveau ASGI, avant que Starlette ne touche
+        # la requête. On patche uvicorn.Config.__init__ car FastMCP peut utiliser
+        # uvicorn.run() OU uvicorn.Server(uvicorn.Config(...)) selon sa version.
         import uvicorn as _uvicorn
-        _orig_run = _uvicorn.run
-        _middleware_injected = [False]
+        _orig_config_init = _uvicorn.Config.__init__
+        _rl_active = [False]
 
-        def _patched_run(app, **kwargs):
-            if hasattr(app, "add_middleware"):
-                app.add_middleware(RateLimitMiddleware)
-                _middleware_injected[0] = True
-                log.info("✅ Rate limiting middleware injecté (25 appels/jour, gratuit)")
-            else:
-                log.warning("⚠️  app.add_middleware indisponible — rate limiting HTTP non actif")
-            _orig_run(app, **kwargs)
+        def _patched_config_init(self, app, **kwargs):
+            # Enveloppe l'app ASGI avec notre intercepteur si pas déjà fait
+            if not isinstance(app, _RateLimitASGI):
+                app = _RateLimitASGI(app)
+                _rl_active[0] = True
+                log.info("✅ Rate limiting ASGI activé (25 appels/jour, gratuit)")
+            _orig_config_init(self, app, **kwargs)
 
-        _uvicorn.run = _patched_run
+        _uvicorn.Config.__init__ = _patched_config_init
         try:
             mcp.run(transport=transport)
         finally:
-            _uvicorn.run = _orig_run
-            if not _middleware_injected[0]:
-                log.warning("⚠️  Middleware rate limiting non activé (uvicorn.run non intercepté)")
+            _uvicorn.Config.__init__ = _orig_config_init
+            if not _rl_active[0]:
+                log.warning("⚠️  Rate limiting non activé (uvicorn.Config non intercepté)")
     else:
         log.error(
             f"Transport inconnu : {transport!r}. "
