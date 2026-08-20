@@ -1,0 +1,21 @@
+app = "brvm-mcp"
+primary_region = "cdg"
+
+[build]
+
+[env]
+  MCP_TRANSPORT = "streamable-http"
+  MCP_HOST = "0.0.0.0"
+  MCP_PORT = "8000"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
