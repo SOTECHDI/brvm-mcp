@@ -2,6 +2,7 @@
 
 [![smithery badge](https://smithery.ai/badge/sotechdi/brvm-mcp)](https://smithery.ai/server/sotechdi/brvm-mcp)
 [![M8ven Live Monitored](https://m8ven.ai/badge/mcp/sotechdi-brvm-mcp-1iuft0)](https://m8ven.ai/mcp/sotechdi-brvm-mcp-1iuft0)
+[![Pricing](https://img.shields.io/badge/Pricing-Free%20%2F%20Pro%20%249%2Fmo-C9A227?style=flat)](https://sotechdi.github.io/brvm-mcp/)
 
 MCP server giving AI assistants access to **BRVM** public data — the West African regional stock exchange serving 8 UEMOA countries (Benin, Burkina Faso, Côte d'Ivoire, Guinea-Bissau, Mali, Niger, Senegal, Togo).
 
@@ -142,6 +143,20 @@ brvm-mcp/
 - Regex on page text, not CSS selectors — more resilient to theme changes
 - 15-minute TTL cache — BRVM runs a single daily fixing (~10:45 GMT), no need to hammer sources
 - Identifiable User-Agent + exponential backoff — respectful of public infrastructure
+
+---
+
+## Pricing
+
+**[→ sotechdi.github.io/brvm-mcp](https://sotechdi.github.io/brvm-mcp/)**
+
+| Tier | Price | Calls |
+|------|-------|-------|
+| **Free** | $0 | 25/day via HTTP (unlimited in local stdio mode) |
+| **Pro** | $9/month | Unlimited + personal API key |
+| **Business** | $29/month | Unlimited + 5 API keys + priority support |
+
+Payment: Orange Money, Moov, PayPal, bank transfer — [dondirechristian@gmail.com](mailto:dondirechristian@gmail.com?subject=brvm-mcp%20Pro)
 
 ---
 
