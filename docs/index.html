@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>brvm-mcp — Pricing</title>
+<meta name="description" content="MCP server pour la BRVM : données de marché en temps réel pour Claude. Free (25 appels/jour), Pro ($9/mois), Business ($29/mois).">
+<meta property="og:title" content="brvm-mcp Pricing">
+<meta property="og:description" content="18 outils MCP · 47 tickers · données BRVM en temps réel pour Claude">
+<meta property="og:url" content="https://sotechdi.github.io/brvm-mcp/">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+<style>
+/* ── TOKENS (dark-first) ── */
+:root {
+  --bg:           #0B0F1A;
+  --bg-alt:       #111827;
+  --surface:      #141C2E;
+  --surface-hi:   #1B2640;
+  --border:       rgba(201,162,39,.18);
+  --border-sub:   rgba(255,255,255,.06);
+  --t1:           #EDE9DA;
+  --t2:           #8B97AA;
+  --t3:           #4E5A6A;
+  --accent:       #C9A227;
+  --accent-d:     #8B6C12;
+  --accent-bg:    rgba(201,162,39,.09);
+  --green:        #4ADE80;
+  --shadow-card:  0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+  --shadow-pro:   0 0 0 1px rgba(201,162,39,.35), 0 4px 32px rgba(201,162,39,.12);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg:           #F5F2EA;
+    --bg-alt:       #FFFFFF;
+    --surface:      #FFFFFF;
+    --surface-hi:   #F0EDE5;
+    --border:       rgba(201,162,39,.28);
+    --border-sub:   rgba(0,0,0,.08);
+    --t1:           #141820;
+    --t2:           #4B5563;
+    --t3:           #9CA3AF;
+    --accent:       #956E00;
+    --accent-d:     #6B4E00;
+    --accent-bg:    rgba(201,162,39,.08);
+    --green:        #16A34A;
+    --shadow-card:  0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+    --shadow-pro:   0 0 0 1px rgba(201,162,39,.4), 0 4px 24px rgba(201,162,39,.1);
+  }
+}
+:root[data-theme="light"] {
+    --bg:           #F5F2EA;
+    --bg-alt:       #FFFFFF;
+    --surface:      #FFFFFF;
+    --surface-hi:   #F0EDE5;
+    --border:       rgba(201,162,39,.28);
+    --border-sub:   rgba(0,0,0,.08);
+    --t1:           #141820;
+    --t2:           #4B5563;
+    --t3:           #9CA3AF;
+    --accent:       #956E00;
+    --accent-d:     #6B4E00;
+    --accent-bg:    rgba(201,162,39,.08);
+    --green:        #16A34A;
+    --shadow-card:  0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+    --shadow-pro:   0 0 0 1px rgba(201,162,39,.4), 0 4px 24px rgba(201,162,39,.1);
+}
+
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--t1);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+canvas#chartbg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: .35;
+  z-index: 0;
+}
+main, header, footer { position: relative; z-index: 1; }
+
+/* ── NAV ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border-sub);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.logo {
+  display: flex; align-items: center; gap: .6rem;
+  text-decoration: none; color: var(--t1);
+}
+.logo-mark {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem; font-weight: 800;
+  color: #0B0F1A; letter-spacing: -.03em; flex-shrink: 0;
+}
+.logo-text { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
+nav { display: flex; gap: 1.5rem; align-items: center; }
+nav a { color: var(--t2); text-decoration: none; font-size: .875rem; transition: color .15s; }
+nav a:hover { color: var(--t1); }
+.theme-btn {
+  background: var(--surface); border: 1px solid var(--border-sub);
+  border-radius: 6px; padding: .3rem .6rem; color: var(--t2);
+  font-size: .8rem; cursor: pointer; transition: color .15s, border-color .15s;
+}
+.theme-btn:hover { color: var(--t1); border-color: var(--border); }
+
+/* ── HERO ── */
+.hero { max-width: 1100px; margin: 0 auto; padding: 5rem 2rem 4rem; }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-size: .7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .12em; color: var(--accent); margin-bottom: 1.5rem;
+}
+.eyebrow-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .5; transform: scale(.7); }
+}
+.hero h1 {
+  font-size: clamp(2.2rem, 6vw, 4rem); font-weight: 800;
+  letter-spacing: -.04em; line-height: 1.05;
+  text-wrap: balance; max-width: 680px; margin-bottom: 1.25rem;
+}
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero-sub {
+  font-size: 1.05rem; color: var(--t2);
+  max-width: 520px; line-height: 1.65; margin-bottom: 2.5rem;
+}
+.stats-strip {
+  display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem;
+  padding: 1.25rem 0; border-top: 1px solid var(--border-sub);
+}
+.stat { display: flex; flex-direction: column; gap: .15rem; }
+.stat-n {
+  font-size: 1.4rem; font-weight: 800; letter-spacing: -.03em;
+  color: var(--t1); font-variant-numeric: tabular-nums;
+}
+.stat-l {
+  font-size: .7rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--t3);
+}
+
+/* ── PRICING ── */
+.pricing-wrap { max-width: 1100px; margin: 0 auto; padding: 0 2rem 6rem; }
+.section-label {
+  font-size: .7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .12em; color: var(--t3); margin-bottom: 2.5rem;
+}
+.cards {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem; align-items: start;
+}
+.card {
+  background: var(--surface); border: 1px solid var(--border-sub);
+  border-radius: 10px; padding: 2rem; box-shadow: var(--shadow-card);
+  display: flex; flex-direction: column; gap: 1.5rem; transition: border-color .2s;
+}
+.card:hover { border-color: var(--border); }
+.card.pro {
+  background: var(--surface-hi); border: none;
+  box-shadow: var(--shadow-pro); position: relative; overflow: hidden;
+}
+.card.pro::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(to bottom, var(--accent), transparent);
+}
+.tier-header { display: flex; flex-direction: column; gap: .5rem; }
+.tier-badge {
+  display: inline-flex; align-items: center; width: fit-content;
+  font-size: .65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; padding: .2rem .55rem; border-radius: 4px;
+}
+.badge-free { background: rgba(74,222,128,.12); color: var(--green); }
+.badge-pro  { background: var(--accent-bg); color: var(--accent); }
+.badge-biz  { background: rgba(148,163,184,.1); color: var(--t2); }
+.tier-name { font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; color: var(--t1); }
+.tier-desc { font-size: .85rem; color: var(--t2); line-height: 1.5; }
+.price-row { display: flex; align-items: baseline; gap: .3rem; }
+.price-n {
+  font-size: 2.4rem; font-weight: 800; letter-spacing: -.04em;
+  color: var(--t1); font-variant-numeric: tabular-nums; line-height: 1;
+}
+.price-per  { font-size: .8rem; color: var(--t3); }
+.price-currency {
+  font-size: .9rem; font-weight: 600; color: var(--t2);
+  align-self: flex-start; margin-top: .2rem;
+}
+.feature-list {
+  list-style: none; display: flex; flex-direction: column; gap: .65rem; flex: 1;
+}
+.feature-list li {
+  display: grid; grid-template-columns: 16px 1fr; gap: .6rem;
+  font-size: .875rem; color: var(--t2); line-height: 1.4; align-items: start;
+}
+.feature-list li .chk { color: var(--green); font-size: .85rem; font-weight: 700; margin-top: .05rem; }
+.feature-list li.dim { color: var(--t3); }
+.feature-list li.dim .chk { color: var(--t3); }
+.feature-list li strong { color: var(--t1); }
+.cta {
+  display: block; text-align: center; padding: .75rem 1rem;
+  border-radius: 7px; font-size: .875rem; font-weight: 600;
+  text-decoration: none; transition: opacity .15s, transform .1s;
+  cursor: pointer; border: none;
+}
+.cta:hover { opacity: .85; transform: translateY(-1px); }
+.cta:active { transform: translateY(0); }
+.cta-free { background: var(--surface-hi); color: var(--t1); border: 1px solid var(--border-sub); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .cta-free { border-color: var(--border); }
+}
+:root[data-theme="light"] .cta-free { border-color: var(--border); }
+.cta-pro  { background: var(--accent); color: #0B0F1A; font-weight: 700; }
+.cta-biz  { background: transparent; color: var(--t1); border: 1px solid var(--border); }
+
+/* ── FAQ ── */
+.faq-wrap {
+  max-width: 1100px; margin: 0 auto; padding: 0 2rem 6rem;
+  display: grid; grid-template-columns: 260px 1fr; gap: 3rem;
+}
+.faq-aside h2 {
+  font-size: 1.4rem; font-weight: 800; letter-spacing: -.03em;
+  line-height: 1.2; text-wrap: balance; margin-bottom: .75rem;
+}
+.faq-aside p { font-size: .875rem; color: var(--t2); line-height: 1.6; }
+.faq-list { display: flex; flex-direction: column; gap: 0; }
+.faq-item { border-top: 1px solid var(--border-sub); padding: 1.25rem 0; }
+.faq-item:last-child { border-bottom: 1px solid var(--border-sub); }
+.faq-q { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; color: var(--t1); margin-bottom: .5rem; }
+.faq-a { font-size: .875rem; color: var(--t2); line-height: 1.65; }
+.faq-a a { color: var(--accent); text-decoration: none; }
+.faq-a a:hover { text-decoration: underline; }
+.faq-a code {
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+  font-size: .8rem; background: var(--accent-bg);
+  padding: .1em .35em; border-radius: 3px; color: var(--accent);
+}
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border-sub); max-width: 1100px;
+  margin: 0 auto; padding: 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 1rem;
+}
+.footer-copy { font-size: .8rem; color: var(--t3); }
+.footer-links { display: flex; gap: 1.5rem; }
+.footer-links a { font-size: .8rem; color: var(--t3); text-decoration: none; transition: color .15s; }
+.footer-links a:hover { color: var(--t1); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 800px) {
+  .cards { grid-template-columns: 1fr; }
+  .faq-wrap { grid-template-columns: 1fr; gap: 2rem; }
+  .hero h1 { font-size: 2rem; }
+}
+@media (max-width: 500px) {
+  header { padding: 1rem; }
+  nav { gap: .75rem; }
+  .hero, .pricing-wrap, .faq-wrap { padding-left: 1rem; padding-right: 1rem; }
+  footer { flex-direction: column; align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eyebrow-dot { animation: none; }
+  canvas#chartbg { display: none; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="chartbg"></canvas>
+
+<header>
+  <a href="https://github.com/SOTECHDI/brvm-mcp" class="logo">
+    <div class="logo-mark">B</div>
+    <span class="logo-text">brvm-mcp</span>
+  </a>
+  <nav>
+    <a href="https://github.com/SOTECHDI/brvm-mcp">GitHub</a>
+    <a href="https://smithery.ai/server/sotechdi/brvm-mcp">Smithery</a>
+    <button class="theme-btn" id="themeToggle" aria-label="Toggle theme">☀ / ☾</button>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="eyebrow">
+      <span class="eyebrow-dot"></span>
+      MCP Server · BRVM
+    </div>
+    <h1>Real-time West African<br>market data for <em>Claude</em></h1>
+    <p class="hero-sub">
+      brvm-mcp aggregates 4 sources into 18 MCP tools — so your AI assistant
+      can query BRVM quotes, fundamentals, dividends, and sector indices
+      without writing a single line of code.
+    </p>
+    <div class="stats-strip">
+      <div class="stat"><span class="stat-n">18</span><span class="stat-l">MCP tools</span></div>
+      <div class="stat"><span class="stat-n">47</span><span class="stat-l">Tickers</span></div>
+      <div class="stat"><span class="stat-n">4</span><span class="stat-l">Data sources</span></div>
+      <div class="stat"><span class="stat-n">8</span><span class="stat-l">UEMOA countries</span></div>
+    </div>
+  </section>
+
+  <section class="pricing-wrap">
+    <div class="section-label">Pricing</div>
+    <div class="cards">
+
+      <!-- FREE -->
+      <div class="card">
+        <div class="tier-header">
+          <span class="tier-badge badge-free">Gratuit</span>
+          <div class="tier-name">Free</div>
+          <div class="tier-desc">Pour explorer la BRVM avec Claude. Aucune carte requise.</div>
+        </div>
+        <div class="price-row">
+          <span class="price-n">$0</span>
+          <span class="price-per">pour toujours</span>
+        </div>
+        <ul class="feature-list">
+          <li><span class="chk">✓</span><span><strong>25 appels/jour</strong> via Smithery HTTP</span></li>
+          <li><span class="chk">✓</span><span>Accès aux <strong>18 outils</strong></span></li>
+          <li><span class="chk">✓</span><span>Mode stdio (local) <strong>illimité</strong></span></li>
+          <li><span class="chk">✓</span><span>Cotations, dividendes, fondamentaux</span></li>
+          <li><span class="chk">✓</span><span>Historique des prix (local DB)</span></li>
+          <li class="dim"><span class="chk">—</span><span>Clé API personnelle</span></li>
+          <li class="dim"><span class="chk">—</span><span>Support prioritaire</span></li>
+        </ul>
+        <a class="cta cta-free" href="https://smithery.ai/server/sotechdi/brvm-mcp">Commencer gratuitement</a>
+      </div>
+
+      <!-- PRO -->
+      <div class="card pro">
+        <div class="tier-header">
+          <span class="tier-badge badge-pro">Recommandé</span>
+          <div class="tier-name">Pro</div>
+          <div class="tier-desc">Pour les investisseurs qui utilisent Claude quotidiennement.</div>
+        </div>
+        <div class="price-row">
+          <span class="price-currency">$</span>
+          <span class="price-n">9</span>
+          <span class="price-per">/ mois</span>
+        </div>
+        <ul class="feature-list">
+          <li><span class="chk">✓</span><span><strong>Appels illimités</strong> — plus de quota</span></li>
+          <li><span class="chk">✓</span><span>Accès aux <strong>18 outils</strong></span></li>
+          <li><span class="chk">✓</span><span><strong>Clé API</strong> personnelle (stable)</span></li>
+          <li><span class="chk">✓</span><span>Historique complet multi-sessions</span></li>
+          <li><span class="chk">✓</span><span>Support par email</span></li>
+          <li><span class="chk">✓</span><span>Nouveaux outils en avant-première</span></li>
+          <li><span class="chk">✓</span><span>Paiement Orange Money, PayPal, virement</span></li>
+        </ul>
+        <a class="cta cta-pro"
+           href="mailto:dondirechristian@gmail.com?subject=brvm-mcp%20Pro%20%E2%80%94%20Abonnement&body=Bonjour%2C%0A%0AJe%20souhaite%20souscrire%20%C3%A0%20brvm-mcp%20Pro%20%289%24%2Fmois%29.%0A%0AMerci%20de%20m%27indiquer%20les%20modalit%C3%A9s%20de%20paiement.%0A%0ACordialement">
+          Upgrader vers Pro
+        </a>
+      </div>
+
+      <!-- BUSINESS -->
+      <div class="card">
+        <div class="tier-header">
+          <span class="tier-badge badge-biz">Institutionnel</span>
+          <div class="tier-name">Business</div>
+          <div class="tier-desc">Pour les SGI, brokers, et équipes d'analyse financière.</div>
+        </div>
+        <div class="price-row">
+          <span class="price-currency">$</span>
+          <span class="price-n">29</span>
+          <span class="price-per">/ mois</span>
+        </div>
+        <ul class="feature-list">
+          <li><span class="chk">✓</span><span><strong>Appels illimités</strong></span></li>
+          <li><span class="chk">✓</span><span>Jusqu'à <strong>5 clés API</strong> (équipe)</span></li>
+          <li><span class="chk">✓</span><span>Accès aux <strong>18 outils</strong></span></li>
+          <li><span class="chk">✓</span><span>Support prioritaire dédié</span></li>
+          <li><span class="chk">✓</span><span>Données historiques complètes exportables</span></li>
+          <li><span class="chk">✓</span><span>Requêtes de données sur mesure</span></li>
+          <li><span class="chk">✓</span><span>Facturation mensuelle / annuelle</span></li>
+        </ul>
+        <a class="cta cta-biz"
+           href="mailto:dondirechristian@gmail.com?subject=brvm-mcp%20Business%20%E2%80%94%20Demande&body=Bonjour%2C%0A%0AJe%20souhaite%20en%20savoir%20plus%20sur%20l%27offre%20Business%20de%20brvm-mcp.%0A%0ANom%20de%20la%20structure%20%3A%0AUsage%20envisag%C3%A9%20%3A%0A%0ACordialement">
+          Nous contacter
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq-wrap">
+    <div class="faq-aside">
+      <h2>Questions fréquentes</h2>
+      <p>Autre question ? Ouvrez une <a href="https://github.com/SOTECHDI/brvm-mcp/discussions" style="color:var(--accent);text-decoration:none;">Discussion GitHub</a> ou écrivez à <a href="mailto:dondirechristian@gmail.com" style="color:var(--accent);text-decoration:none;">dondirechristian@gmail.com</a>.</p>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q">Comment obtenir ma clé API après abonnement ?</div>
+        <div class="faq-a">Après confirmation du paiement, vous recevez votre clé API par email. Ajoutez-la dans votre configuration MCP : <code>"env": {"BRVM_API_KEY": "votre-clé"}</code>. La limite de 25 appels/jour est automatiquement levée.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Quels modes de paiement sont acceptés ?</div>
+        <div class="faq-a">Orange Money, Moov Money, PayPal, et virement bancaire UEMOA. Contactez-nous à <a href="mailto:dondirechristian@gmail.com">dondirechristian@gmail.com</a> pour démarrer.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Le mode stdio (Claude Desktop local) est-il gratuit et illimité ?</div>
+        <div class="faq-a">Oui. Quand vous installez brvm-mcp localement via <code>uvx</code>, le serveur tourne sur votre machine et aucune limite ne s'applique. La limite de 25 appels/jour concerne uniquement les accès HTTP distants (Smithery, Railway).</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Les données sont-elles en temps réel ?</div>
+        <div class="faq-a">La BRVM fonctionne par fixing unique (~10h45 GMT). Les données sont mises à jour après chaque séance avec un cache de 15 minutes. Vous obtenez toujours les données du dernier fixing officiel.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span class="footer-copy">© 2026 SOTECHDI · Christian Dondire</span>
+  <div class="footer-links">
+    <a href="https://github.com/SOTECHDI/brvm-mcp">GitHub</a>
+    <a href="https://smithery.ai/server/sotechdi/brvm-mcp">Smithery</a>
+    <a href="https://github.com/SOTECHDI/brvm-mcp/discussions">Discussions</a>
+    <a href="mailto:dondirechristian@gmail.com">Contact</a>
+  </div>
+</footer>
+
+<script>
+/* ── THEME TOGGLE ── */
+const btn = document.getElementById('themeToggle');
+const root = document.documentElement;
+btn.addEventListener('click', () => {
+  const cur = root.getAttribute('data-theme');
+  if (!cur) {
+    const sys = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    root.setAttribute('data-theme', sys === 'dark' ? 'light' : 'dark');
+  } else {
+    root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  }
+});
+
+/* ── CANVAS CHART BACKGROUND ── */
+(function() {
+  const canvas = document.getElementById('chartbg');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, lines = [];
+  const NLINES = 4;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    lines = [];
+    for (let i = 0; i < NLINES; i++) {
+      const pts = [];
+      const steps = Math.ceil(W / 60) + 2;
+      let y = H * (.2 + Math.random() * .6);
+      for (let j = 0; j < steps; j++) {
+        y += (Math.random() - .48) * H * .06;
+        y = Math.max(H * .05, Math.min(H * .95, y));
+        pts.push({ x: (j / (steps - 1)) * W, y });
+      }
+      lines.push({ pts, offset: Math.random() * 1000, speed: .15 + Math.random() * .2 });
+    }
+  }
+
+  function drawLine(pts, t) {
+    const isLight = window.matchMedia('(prefers-color-scheme: light)').matches
+                 || root.getAttribute('data-theme') === 'light';
+    const col = isLight ? 'rgba(150,120,20,.35)' : 'rgba(201,162,39,.4)';
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y + Math.sin(t) * 8);
+    for (let i = 1; i < pts.length; i++) {
+      const xm = (pts[i-1].x + pts[i].x) / 2;
+      const ym = (pts[i-1].y + pts[i].y) / 2 + Math.sin(t + i * .7) * 8;
+      ctx.quadraticCurveTo(
+        pts[i-1].x, pts[i-1].y + Math.sin(t + (i-.5)*.7)*8,
+        xm, ym
+      );
+    }
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  function frame(ts) {
+    ctx.clearRect(0, 0, W, H);
+    for (const ln of lines) {
+      drawLine(ln.pts, ts * .001 * ln.speed + ln.offset);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

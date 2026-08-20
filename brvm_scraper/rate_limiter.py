@@ -88,10 +88,10 @@ def rate_limit_error(remaining_tomorrow: bool = True) -> str:
     return json.dumps({
         "erreur": (
             f"Limite atteinte : {FREE_LIMIT} appels/jour en tier gratuit. "
-            "Revenez demain ou passez en Pro ($9/mois) pour un accès illimité. "
-            "Détails : github.com/sotechdi/brvm-mcp#pricing"
+            "Revenez demain ou passez en Pro ($9/mois) pour un acces illimite. "
+            "Details : sotechdi.github.io/brvm-mcp"
         ),
         "tier": "free",
         "limit_per_day": FREE_LIMIT,
-        "upgrade_url": "https://github.com/sotechdi/brvm-mcp#pricing",
+        "upgrade_url": "https://sotechdi.github.io/brvm-mcp",
     }, ensure_ascii=False)
