@@ -284,6 +284,118 @@ footer {
   .eyebrow-dot { animation: none; }
   canvas#chartbg { display: none; }
 }
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface-hi);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 460px;
+  padding: 2rem;
+  box-shadow: 0 24px 64px rgba(0,0,0,.5);
+  position: relative;
+  animation: modal-in .2s ease;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.modal-close {
+  position: absolute; top: 1rem; right: 1rem;
+  background: none; border: none; cursor: pointer;
+  color: var(--t3); font-size: 1.2rem; line-height: 1;
+  padding: .25rem .4rem; border-radius: 4px;
+  transition: color .15s;
+}
+.modal-close:hover { color: var(--t1); }
+
+.modal-title {
+  font-size: 1.1rem; font-weight: 700;
+  letter-spacing: -.02em; color: var(--t1);
+  margin-bottom: .35rem;
+}
+.modal-sub {
+  font-size: .8rem; color: var(--t2);
+  margin-bottom: 1.5rem; line-height: 1.5;
+}
+
+.form-group { display: flex; flex-direction: column; gap: .4rem; margin-bottom: 1rem; }
+.form-label { font-size: .75rem; font-weight: 600; color: var(--t2); text-transform: uppercase; letter-spacing: .08em; }
+.form-input, .form-textarea {
+  background: var(--bg); border: 1px solid var(--border-sub);
+  border-radius: 6px; padding: .6rem .8rem;
+  color: var(--t1); font-size: .875rem;
+  font-family: inherit; width: 100%;
+  transition: border-color .15s;
+  outline: none;
+}
+.form-input:focus, .form-textarea:focus { border-color: var(--accent); }
+.form-textarea { resize: vertical; min-height: 72px; }
+
+.tier-radios { display: flex; gap: .75rem; }
+.tier-radio-label {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  gap: .5rem; padding: .6rem .8rem; border: 1px solid var(--border-sub);
+  border-radius: 6px; cursor: pointer; font-size: .85rem; color: var(--t2);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.tier-radio-label:hover { border-color: var(--border); color: var(--t1); }
+.tier-radio-label input[type=radio] { display: none; }
+.tier-radio-label.selected {
+  border-color: var(--accent); color: var(--accent);
+  background: var(--accent-bg);
+}
+.tier-radio-label .tier-price { font-size: .7rem; color: var(--t3); margin-left: .15rem; }
+.tier-radio-label.selected .tier-price { color: var(--accent-d); }
+
+.form-submit {
+  width: 100%; padding: .8rem 1rem;
+  background: var(--accent); color: #0B0F1A;
+  border: none; border-radius: 7px;
+  font-size: .9rem; font-weight: 700;
+  cursor: pointer; margin-top: .5rem;
+  transition: opacity .15s;
+}
+.form-submit:hover { opacity: .87; }
+.form-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+.form-note { font-size: .75rem; color: var(--t3); margin-top: .75rem; text-align: center; line-height: 1.5; }
+.form-note a { color: var(--t2); }
+
+.modal-success {
+  display: none; text-align: center; padding: 1rem 0;
+}
+.modal-success.show { display: block; }
+.modal-form.hide { display: none; }
+.success-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+.success-title {
+  font-size: 1.1rem; font-weight: 700; color: var(--t1);
+  letter-spacing: -.02em; margin-bottom: .5rem;
+}
+.success-msg { font-size: .875rem; color: var(--t2); line-height: 1.6; }
+.success-email { color: var(--accent); font-weight: 600; }
+
+.modal-error {
+  display: none; font-size: .8rem; color: #f87171;
+  background: rgba(248,113,113,.1); border-radius: 6px;
+  padding: .6rem .8rem; margin-top: .75rem; text-align: center;
+}
+.modal-error.show { display: block; }
 </style>
 </head>
 <body>
@@ -370,10 +482,9 @@ footer {
           <li><span class="chk">✓</span><span>Nouveaux outils en avant-première</span></li>
           <li><span class="chk">✓</span><span>Paiement Orange Money, PayPal, virement</span></li>
         </ul>
-        <a class="cta cta-pro"
-           href="mailto:dondirechristian@gmail.com?subject=brvm-mcp%20Pro%20%E2%80%94%20Abonnement&body=Bonjour%2C%0A%0AJe%20souhaite%20souscrire%20%C3%A0%20brvm-mcp%20Pro%20%289%24%2Fmois%29.%0A%0AMerci%20de%20m%27indiquer%20les%20modalit%C3%A9s%20de%20paiement.%0A%0ACordialement">
+        <button class="cta cta-pro" onclick="openModal('pro')">
           Upgrader vers Pro
-        </a>
+        </button>
       </div>
 
       <!-- BUSINESS -->
@@ -397,10 +508,9 @@ footer {
           <li><span class="chk">✓</span><span>Requêtes de données sur mesure</span></li>
           <li><span class="chk">✓</span><span>Facturation mensuelle / annuelle</span></li>
         </ul>
-        <a class="cta cta-biz"
-           href="mailto:dondirechristian@gmail.com?subject=brvm-mcp%20Business%20%E2%80%94%20Demande&body=Bonjour%2C%0A%0AJe%20souhaite%20en%20savoir%20plus%20sur%20l%27offre%20Business%20de%20brvm-mcp.%0A%0ANom%20de%20la%20structure%20%3A%0AUsage%20envisag%C3%A9%20%3A%0A%0ACordialement">
+        <button class="cta cta-biz" onclick="openModal('business')">
           Nous contacter
-        </a>
+        </button>
       </div>
     </div>
   </section>
@@ -440,6 +550,74 @@ footer {
     <a href="mailto:dondirechristian@gmail.com">Contact</a>
   </div>
 </footer>
+
+<!-- ── MODAL SOUSCRIPTION ── -->
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <button class="modal-close" id="modalClose" aria-label="Fermer">✕</button>
+
+    <!-- Formulaire -->
+    <div class="modal-form" id="modalForm">
+      <div class="modal-title" id="modalTitle">Souscrire à brvm-mcp</div>
+      <div class="modal-sub">Remplissez ce formulaire — vous serez contacté(e) sous 24h avec votre clé API.</div>
+
+      <form id="subscribeForm" novalidate>
+        <!-- Anti-spam honeypot (caché) -->
+        <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
+
+        <div class="form-group">
+          <label class="form-label" for="fieldName">Prénom / Nom *</label>
+          <input class="form-input" type="text" id="fieldName" name="name"
+                 placeholder="Jean Dupont" required autocomplete="name">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="fieldEmail">Email *</label>
+          <input class="form-input" type="email" id="fieldEmail" name="email"
+                 placeholder="vous@exemple.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Offre *</label>
+          <div class="tier-radios">
+            <label class="tier-radio-label" id="label-pro">
+              <input type="radio" name="tier" value="pro" id="radio-pro">
+              Pro <span class="tier-price">$9/mois</span>
+            </label>
+            <label class="tier-radio-label" id="label-business">
+              <input type="radio" name="tier" value="business" id="radio-business">
+              Business <span class="tier-price">$29/mois</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="fieldMsg">Message (optionnel)</label>
+          <textarea class="form-textarea" id="fieldMsg" name="message"
+                    placeholder="Usage prévu, questions…"></textarea>
+        </div>
+
+        <button type="submit" class="form-submit" id="submitBtn">Envoyer la demande</button>
+        <div class="modal-error" id="formError"></div>
+        <p class="form-note">
+          Paiement accepté : Orange Money, Moov, PayPal, virement UEMOA.<br>
+          <a href="mailto:dondirechristian@gmail.com">Contacter directement par email</a>
+        </p>
+      </form>
+    </div>
+
+    <!-- Message de succès -->
+    <div class="modal-success" id="modalSuccess">
+      <div class="success-icon">✅</div>
+      <div class="success-title">Demande reçue !</div>
+      <div class="success-msg">
+        Un email de confirmation vous sera envoyé à<br>
+        <span class="success-email" id="successEmail"></span><br><br>
+        Votre clé API sera transmise sous <strong>24h</strong> après confirmation du paiement.
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ── THEME TOGGLE ── */
@@ -511,6 +689,119 @@ btn.addEventListener('click', () => {
   window.addEventListener('resize', resize);
   requestAnimationFrame(frame);
 })();
+
+/* ── MODAL ── */
+const overlay    = document.getElementById('modalOverlay');
+const modalClose = document.getElementById('modalClose');
+const modalForm  = document.getElementById('modalForm');
+const modalSuccess = document.getElementById('modalSuccess');
+const formError  = document.getElementById('formError');
+const submitBtn  = document.getElementById('submitBtn');
+
+function openModal(tier) {
+  // Reset état
+  modalForm.classList.remove('hide');
+  modalSuccess.classList.remove('show');
+  formError.classList.remove('show');
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Envoyer la demande';
+
+  // Pré-sélectionner le tier
+  document.querySelectorAll('.tier-radio-label').forEach(l => l.classList.remove('selected'));
+  const radio = document.getElementById(`radio-${tier}`);
+  const label = document.getElementById(`label-${tier}`);
+  if (radio) { radio.checked = true; label.classList.add('selected'); }
+
+  overlay.classList.add('open');
+  document.getElementById('fieldName').focus();
+}
+
+function closeModal() {
+  overlay.classList.remove('open');
+}
+
+modalClose.addEventListener('click', closeModal);
+overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// Sync radio → style
+document.querySelectorAll('input[name=tier]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    document.querySelectorAll('.tier-radio-label').forEach(l => l.classList.remove('selected'));
+    document.getElementById(`label-${radio.value}`).classList.add('selected');
+  });
+});
+
+// Submit
+document.getElementById('subscribeForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const form = e.target;
+
+  // Honeypot check
+  if (form._honey.value) return;
+
+  const name    = form.name.value.trim();
+  const email   = form.email.value.trim();
+  const tierVal = form.tier.value;
+  const message = form.message.value.trim();
+
+  // Validation basique
+  if (!name || !email || !tierVal) {
+    showError('Veuillez remplir tous les champs obligatoires (*).');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showError('Adresse email invalide.');
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Envoi en cours…';
+  formError.classList.remove('show');
+
+  const tierLabel = tierVal === 'pro' ? 'Pro ($9/mois)' : 'Business ($29/mois)';
+
+  try {
+    // formsubmit.co : premier envoi déclenche un email de vérification à
+    // dondirechristian@gmail.com — cliquer le lien pour activer définitivement.
+    const res = await fetch('https://formsubmit.co/ajax/dondirechristian@gmail.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        _subject: `[brvm-mcp] Souscription ${tierLabel} — ${name}`,
+        _template: 'box',
+        name,
+        email,
+        offre: tierLabel,
+        message: message || '(aucun message)',
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && (data.success === 'true' || data.success === true)) {
+      // Succès
+      modalForm.classList.add('hide');
+      document.getElementById('successEmail').textContent = email;
+      modalSuccess.classList.add('show');
+    } else {
+      throw new Error(data.message || `HTTP ${res.status}`);
+    }
+  } catch (err) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Envoyer la demande';
+    showError(
+      'Envoi échoué. Contactez directement ' +
+      '<a href="mailto:dondirechristian@gmail.com">dondirechristian@gmail.com</a>'
+    );
+    console.error('[subscribe]', err);
+  }
+});
+
+function showError(msg) {
+  formError.innerHTML = msg;
+  formError.classList.add('show');
+}
 </script>
 </body>
 </html>

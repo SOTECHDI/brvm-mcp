@@ -31,7 +31,11 @@ import os as _os
 def _load_paid_keys() -> set:
     raw = _os.getenv("BRVM_API_KEYS", "{}")
     try:
-        return set(json.loads(raw).keys())
+        # Les clés sont stockées comme UUIDs bruts dans BRVM_API_KEYS.
+        # Le middleware ASGI les reçoit via ?api_key=UUID et préfixe l'identifiant
+        # avec "sk_" → on expose les deux formes pour matcher les deux cas.
+        raw_keys = set(json.loads(raw).keys())
+        return raw_keys | {f"sk_{k}" for k in raw_keys}
     except Exception:
         return set()
 
