@@ -1,0 +1,25 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy brvm-mcp
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        run: |
+          railway up --detach \
+            --service 9d0bde96-9630-4301-a268-e8338056adc7
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
