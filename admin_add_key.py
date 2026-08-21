@@ -136,7 +136,7 @@ En cas de question, répondez simplement à cet email.
 
 Bonne analyse !
 Christian Dondire — SOTECHDI
-dondirechristian@gmail.com
+contact@sotechdi.com
 https://sotechdi.github.io/brvm-mcp/\
 """)
     print()

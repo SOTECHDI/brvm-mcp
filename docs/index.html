@@ -518,7 +518,7 @@ footer {
   <section class="faq-wrap">
     <div class="faq-aside">
       <h2>Questions fréquentes</h2>
-      <p>Autre question ? Ouvrez une <a href="https://github.com/SOTECHDI/brvm-mcp/discussions" style="color:var(--accent);text-decoration:none;">Discussion GitHub</a> ou écrivez à <a href="mailto:dondirechristian@gmail.com" style="color:var(--accent);text-decoration:none;">dondirechristian@gmail.com</a>.</p>
+      <p>Autre question ? Ouvrez une <a href="https://github.com/SOTECHDI/brvm-mcp/discussions" style="color:var(--accent);text-decoration:none;">Discussion GitHub</a> ou écrivez à <a href="mailto:contact@sotechdi.com" style="color:var(--accent);text-decoration:none;">contact@sotechdi.com</a>.</p>
     </div>
     <div class="faq-list">
       <div class="faq-item">
@@ -527,7 +527,7 @@ footer {
       </div>
       <div class="faq-item">
         <div class="faq-q">Quels modes de paiement sont acceptés ?</div>
-        <div class="faq-a">Orange Money, Moov Money, PayPal, et virement bancaire UEMOA. Contactez-nous à <a href="mailto:dondirechristian@gmail.com">dondirechristian@gmail.com</a> pour démarrer.</div>
+        <div class="faq-a">Orange Money, Moov Money, PayPal, et virement bancaire UEMOA. Contactez-nous à <a href="mailto:contact@sotechdi.com">contact@sotechdi.com</a> pour démarrer.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q">Le mode stdio (Claude Desktop local) est-il gratuit et illimité ?</div>
@@ -547,7 +547,7 @@ footer {
     <a href="https://github.com/SOTECHDI/brvm-mcp">GitHub</a>
     <a href="https://smithery.ai/server/sotechdi/brvm-mcp">Smithery</a>
     <a href="https://github.com/SOTECHDI/brvm-mcp/discussions">Discussions</a>
-    <a href="mailto:dondirechristian@gmail.com">Contact</a>
+    <a href="mailto:contact@sotechdi.com">Contact</a>
   </div>
 </footer>
 
@@ -601,7 +601,7 @@ footer {
         <div class="modal-error" id="formError"></div>
         <p class="form-note">
           Paiement accepté : Orange Money, Moov, PayPal, virement UEMOA.<br>
-          <a href="mailto:dondirechristian@gmail.com">Contacter directement par email</a>
+          <a href="mailto:contact@sotechdi.com">Contacter directement par email</a>
         </p>
       </form>
     </div>
@@ -763,8 +763,8 @@ document.getElementById('subscribeForm').addEventListener('submit', async e => {
 
   try {
     // formsubmit.co : premier envoi déclenche un email de vérification à
-    // dondirechristian@gmail.com — cliquer le lien pour activer définitivement.
-    const res = await fetch('https://formsubmit.co/ajax/dondirechristian@gmail.com', {
+    // contact@sotechdi.com — cliquer le lien pour activer définitivement.
+    const res = await fetch('https://formsubmit.co/ajax/contact@sotechdi.com', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
@@ -792,7 +792,7 @@ document.getElementById('subscribeForm').addEventListener('submit', async e => {
     submitBtn.textContent = 'Envoyer la demande';
     showError(
       'Envoi échoué. Contactez directement ' +
-      '<a href="mailto:dondirechristian@gmail.com">dondirechristian@gmail.com</a>'
+      '<a href="mailto:contact@sotechdi.com">contact@sotechdi.com</a>'
     );
     console.error('[subscribe]', err);
   }

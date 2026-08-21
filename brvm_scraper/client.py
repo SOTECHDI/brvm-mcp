@@ -20,7 +20,7 @@ _session = requests.Session()
 _session.headers.update({
     "User-Agent": (
         "brvm-mcp/0.1 (outil open-source d'analyse BRVM; "
-        "contact: dondirechristian@gmail.com)"
+        "contact: contact@sotechdi.com)"
     ),
     "Accept-Language": "fr-FR,fr;q=0.9",
 })

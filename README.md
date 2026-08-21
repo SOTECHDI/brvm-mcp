@@ -156,7 +156,7 @@ brvm-mcp/
 | **Pro** | $9/month | Unlimited + personal API key |
 | **Business** | $29/month | Unlimited + 5 API keys + priority support |
 
-Payment: Orange Money, Moov, PayPal, bank transfer — [dondirechristian@gmail.com](mailto:dondirechristian@gmail.com?subject=brvm-mcp%20Pro)
+Payment: Orange Money, Moov, PayPal, bank transfer — [contact@sotechdi.com](mailto:contact@sotechdi.com?subject=brvm-mcp%20Pro)
 
 ---
 
