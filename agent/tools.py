@@ -120,9 +120,12 @@ def fondamentaux(pdf_url: str) -> list:
 
 @tool
 def volumes(ticker: str = "") -> list:
-    """Volumes d'échange par titre (source AFX Kwayisi) — absents de brvm.org.
-    C'est la donnée qui révèle la liquidité réelle : un titre peut afficher un
-    cours sans s'échanger. Passer un ticker (ex: SNTS) ou laisser vide pour tous."""
+    """VOLUMES et liquidité (source AFX Kwayisi) — absents de brvm.org.
+    N'utiliser QUE si la question porte sur le volume, la liquidité ou la
+    performance depuis le 1er janvier. Pour un simple cours, utiliser
+    cotations(). Un titre peut afficher un cours sans s'échanger : c'est
+    précisément ce que révèle cet outil.
+    Passer un ticker (ex: SNTS) ou laisser vide pour tous."""
     donnees = get_quotes_afx()
     if ticker:
         t = ticker.strip().upper()
@@ -162,17 +165,19 @@ def indices_sectoriels() -> list:
 
 @tool
 def cotations_enrichies() -> list:
-    """Cotations enrichies (source Rich Bourse) : ajoute notamment le cours de
-    clôture précédent et la capitalisation boursière, absents de cotations().
-    Utile pour recouper une donnée douteuse avec une seconde source."""
+    """COURS DE VEILLE et CAPITALISATION par titre (source Rich Bourse).
+    N'utiliser QUE si la question porte sur le cours de clôture précédent, la
+    capitalisation d'une société, ou pour recouper une donnée douteuse avec une
+    seconde source. Pour un simple cours du jour, utiliser cotations()."""
     return get_quotes_richbourse()
 
 
 @tool
 def ohlc() -> list:
-    """Cotations OHLC — ouverture, plus haut, plus bas, clôture (source Sika
-    Finance). Donne l'amplitude de la séance, là où cotations() ne renvoie que
-    le dernier cours."""
+    """AMPLITUDE DE SÉANCE — ouverture, plus haut, plus bas, clôture (source
+    Sika Finance). N'utiliser QUE si la question porte sur l'amplitude, la
+    volatilité intra-séance, ou un cours d'ouverture. Pour le seul dernier
+    cours, utiliser cotations()."""
     return get_quotes_sikafinance()
 
 
