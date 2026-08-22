@@ -10,49 +10,76 @@ activité réglementée (agrément CIB délivré par l'AMF-UMOA). Un texte qui c
 du vocabulaire prescriptif est donc REJETÉ, jamais réécrit silencieusement —
 réécrire masquerait le dérapage au lieu de le signaler.
 
-Choix de conception important : on cible des TOURNURES prescriptives, pas des mots
-isolés. Bloquer « vendre » casserait un bulletin factuel légitime comme « la
-société a vendu sa filiale » (événement d'entreprise, information licite). On
-cherche l'injonction (« achetez »), le conseil (« nous recommandons »), la
-valorisation subjective (« sous-évalué ») et la prévision (« objectif de cours »).
+Deux choix de conception, appris à nos dépens :
+
+1. On cible des TOURNURES, pas des mots isolés. Bloquer « vendre » casserait un
+   bulletin factuel légitime (« la société a vendu sa filiale »), et bloquer
+   « buy » casserait « buy orders reached 12,000 shares ». On vise l'injonction,
+   le conseil, le jugement de valorisation et la prévision.
+
+2. La comparaison est INSENSIBLE AUX ACCENTS. « sous-évalué » et « sous-evalue »
+   doivent être bloqués tous les deux : un texte généré n'est pas toujours
+   accentué correctement, et un garde-fou qu'une lettre manquante contourne ne
+   protège de rien. Les motifs sont donc écrits sans accents et appliqués à une
+   copie désaccentuée du texte — copie de MÊME LONGUEUR, pour que les positions
+   rapportées correspondent au texte original.
 """
 
 import re
 
-# Chaque entrée : (motif, libellé lisible expliquant pourquoi c'est bloqué).
+# Table 1 pour 1 : chaque caractère accentué est remplacé par son équivalent nu.
+# On n'utilise pas unicodedata.normalize('NFD') + filtrage, qui modifierait la
+# longueur du texte et décalerait les positions rapportées.
+_TABLE_ACCENTS = str.maketrans(
+    "àâäáãåéèêëíìîïóòôöõúùûüçñýÿÀÂÄÁÃÅÉÈÊËÍÌÎÏÓÒÔÖÕÚÙÛÜÇÑÝ",
+    "aaaaaaeeeeiiiiooooouuuucnyyAAAAAAEEEEIIIIOOOOOUUUUCNY",
+)
+
+
+def _sans_accents(texte: str) -> str:
+    """Copie désaccentuée, de même longueur que l'original."""
+    return texte.translate(_TABLE_ACCENTS)
+
+
+# Chaque entrée : (motif SANS ACCENTS, libellé expliquant pourquoi c'est bloqué).
 # re.IGNORECASE est appliqué à la compilation ; les motifs gèrent l'apostrophe
 # droite (') et typographique (’), fréquentes dans du texte généré.
 _MOTIFS = [
     # --- Injonctions directes (français) ---
     (r"\bachet(?:ez|ons)\b", "injonction d'achat"),
     (r"\bvend(?:ez|ons)\b", "injonction de vente"),
+    # L'infinitif en tête de phrase est un impératif déguisé, très courant en
+    # titre : « Acheter SONATEL maintenant ». Ailleurs dans la phrase, l'infinitif
+    # est souvent explicatif et légitime (« les frais pour acheter une action »),
+    # donc on ne l'attrape qu'en début de phrase.
+    (r"(?:^|[.!?;:\n]\s*)(?:acheter|vendre)\b", "injonction d'achat/vente"),
+    (r"\ba\s+(?:acheter|vendre)\b", "qualification « à acheter/vendre »"),
+    (r"\bil\s+faut\s+(?:acheter|vendre|investir|miser)\b", "injonction d'investissement"),
+    (r"\bvous\s+devriez\s+(?:acheter|vendre|investir)\b", "injonction d'investissement"),
     (r"\b(?:positionnez|misez|profitez)[- ]?(?:vous)?\b", "incitation à l'action"),
     (r"\bn['’]attendez\s+pas\b", "incitation à l'action"),
-    (r"\b(?:à|a)\s+(?:acheter|vendre)\b", "qualification « à acheter/vendre »"),
-    (r"\bil\s+faut\s+(?:acheter|vendre|investir)\b", "injonction d'investissement"),
-    (r"\bvous\s+devriez\s+(?:acheter|vendre|investir)\b", "injonction d'investissement"),
     # --- Conseil explicite (français) ---
     (r"\b(?:je\s+recommande|nous\s+recommandons)\b", "recommandation explicite"),
     (r"\b(?:je\s+vous\s+conseille|nous\s+conseillons)\b", "conseil explicite"),
     (r"\b(?:recommandation|conseil)\s+d['’]achat\b", "recommandation d'achat"),
     (r"\b(?:notre\s+recommandation|notre\s+conseil)\b", "conseil explicite"),
-    (r"\bopportunit[ée]s?\s+d['’]achat\b", "qualification en opportunité d'achat"),
+    (r"\bopportunites?\s+d['’]achat\b", "qualification en opportunité d'achat"),
     # « à l'achat » seul est ambigu : « 12 000 titres à l'achat » est une donnée
     # de carnet d'ordres, parfaitement factuelle. On n'attrape donc que les
     # tournures où l'expression sert d'opinion.
-    (r"\b(?:pass(?:er|ons|ez|e|[ée]e?s?)|opinion|recommandation|conseil|valeur)\s+"
-     r"(?:à|a)\s+(?:l['’]achat|la\s+vente)\b", "opinion « à l'achat/à la vente »"),
-    # --- Valorisation subjective (français) ---
-    (r"\bsous[-\s]?(?:évalu|valoris)[ée]e?s?\b", "jugement de valorisation"),
-    (r"\bsur[-\s]?(?:évalu|valoris)[ée]e?s?\b", "jugement de valorisation"),
-    (r"\bvaleur\s+s[ûu]re\b", "garantie implicite de performance"),
-    (r"\bplacement\s+id[ée]al\b", "garantie implicite de performance"),
-    (r"\b(?:p[ée]pite|incontournable|belle\s+affaire)\b", "jugement de valeur sur un titre"),
+    (r"\b(?:pass(?:er|ons|ez|e|ees?|es)|opinion|recommandation|conseil|valeur)\s+"
+     r"a\s+(?:l['’]achat|la\s+vente)\b", "opinion « à l'achat/à la vente »"),
+    # --- Jugement de valorisation (français) ---
+    (r"\bsous[-\s]?(?:evalu|valoris)ee?s?\b", "jugement de valorisation"),
+    (r"\bsur[-\s]?(?:evalu|valoris)ee?s?\b", "jugement de valorisation"),
+    (r"\bvaleur\s+sure\b", "garantie implicite de performance"),
+    (r"\bplacement\s+ideal\b", "garantie implicite de performance"),
+    (r"\b(?:pepite|incontournable|belle\s+affaire)\b", "jugement de valeur sur un titre"),
     (r"\bprometteu(?:r|se)s?\b", "jugement de valeur sur un titre"),
     # --- Prescription déguisée (français) ---
-    (r"\b(?:à|a)\s+surveiller\b", "prescription déguisée"),
-    (r"\b(?:à|a)\s+suivre\s+de\s+pr[èe]s\b", "prescription déguisée"),
-    (r"\bpoint\s+d['’]entr[ée]e\b", "prescription déguisée"),
+    (r"\ba\s+surveiller\b", "prescription déguisée"),
+    (r"\ba\s+suivre\s+de\s+pres\b", "prescription déguisée"),
+    (r"\bpoint\s+d['’]entree\b", "prescription déguisée"),
     # --- Prévision / objectif de cours (français) ---
     (r"\bobjectif\s+de\s+cours\b", "objectif de cours (prévision)"),
     (r"\bpotentiel\s+de\s+(?:hausse|baisse)\b", "prévision de performance"),
@@ -62,8 +89,8 @@ _MOTIFS = [
     (r"\b(?:s['’]envolera|chutera)\b", "prévision de performance"),
     # --- Équivalents anglais ---
     # L'impératif anglais est le verbe nu : « Buy SONATEL ». On ne peut donc pas
-    # bloquer « buy » partout — « buy orders reached 12,000 » est une donnée de
-    # carnet d'ordres, et « sell-side analysts » une catégorie de métier. On cible
+    # bloquer « buy » partout — « buy orders reached 12,000 shares » est une donnée
+    # de carnet d'ordres, et « sell-side analysts » une catégorie de métier. On cible
     # l'impératif en tête de phrase, en excluant ces emplois factuels.
     (r"(?:^|[.!?;:\n]\s*)(?:buy|sell)\b"
      r"(?!\s*[-–]?\s*(?:orders?|side|volume|pressure|price|ratio)\b)",
@@ -112,20 +139,27 @@ def check(texte: str) -> list[dict]:
 
     Ne lève rien : utile pour tester, journaliser ou afficher un avertissement
     sans interrompre le flux. Renvoie une liste vide si le texte est conforme.
+
+    Les motifs sont appliqués à une copie désaccentuée, mais les termes et
+    extraits rapportés proviennent du texte ORIGINAL — l'utilisateur doit
+    retrouver le passage tel qu'il l'a écrit.
     """
     if not texte:
         return []
 
+    cible = _sans_accents(texte)
+
     violations = []
     for motif, raison in _MOTIFS_COMPILES:
-        for trouve in motif.finditer(texte):
-            debut = max(0, trouve.start() - _CONTEXTE)
-            fin = min(len(texte), trouve.end() + _CONTEXTE)
+        for trouve in motif.finditer(cible):
+            debut, fin = trouve.start(), trouve.end()
+            ctx_debut = max(0, debut - _CONTEXTE)
+            ctx_fin = min(len(texte), fin + _CONTEXTE)
             violations.append({
-                "terme": trouve.group(0),
+                "terme": texte[debut:fin].strip(),
                 "raison": raison,
-                "position": trouve.start(),
-                "extrait": texte[debut:fin].replace("\n", " ").strip(),
+                "position": debut,
+                "extrait": texte[ctx_debut:ctx_fin].replace("\n", " ").strip(),
             })
 
     # Tri par position : l'utilisateur lit les infractions dans l'ordre du texte.

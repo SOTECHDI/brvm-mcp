@@ -4,6 +4,8 @@
 [![M8ven Live Monitored](https://m8ven.ai/badge/mcp/sotechdi-brvm-mcp-1iuft0)](https://m8ven.ai/mcp/sotechdi-brvm-mcp-1iuft0)
 [![Pricing](https://img.shields.io/badge/Pricing-Free%20%2F%20Pro%20%249%2Fmo-C9A227?style=flat)](https://sotechdi.github.io/brvm-mcp/)
 
+*🇫🇷 [Version française](docs/README.fr.md)*
+
 MCP server giving AI assistants access to **BRVM** public data — the West African regional stock exchange serving 8 UEMOA countries (Benin, Burkina Faso, Côte d'Ivoire, Guinea-Bissau, Mali, Niger, Senegal, Togo).
 
 The BRVM publishes no public API. This server aggregates **4 data sources** into **18 MCP tools** so any AI assistant (Claude Desktop, Claude Code, etc.) can query real-time market data, fundamentals, dividends, volumes, and sector indices.
@@ -131,10 +133,12 @@ silently rewritten**: rewriting would hide the drift instead of surfacing it.
 
 The linter matches prescriptive *constructions*, not isolated words. "The
 company sold its subsidiary" is a corporate event and passes; "sell SONATEL"
-does not. This distinction is what keeps the guardrail usable on real bulletins.
+does not. Matching is also accent-insensitive, so a missing diacritic cannot
+slip prescriptive French past the guardrail. Both distinctions are what keep it
+usable on real bulletins.
 
 ```bash
-pytest tests/test_editorial.py   # 18 prescriptive samples blocked, 10 factual ones passed
+pytest tests/test_editorial.py   # 23 prescriptive samples blocked, 14 factual ones passed
 ```
 
 Answers therefore stay within factual reporting: prices, yields, volumes,

@@ -36,6 +36,13 @@ PRESCRIPTIFS = [
     "Notre recommandation reste inchangée sur le secteur.",
     "Nous passons à l'achat sur SONATEL.",
     "Positionnez-vous avant l'assemblée générale.",
+    # Infinitif en tête de phrase = impératif déguisé (style titre)
+    "Acheter SONATEL maintenant.",
+    "Vendre ETIT avant le détachement du dividende.",
+    # SANS ACCENTS : un texte mal accentué ne doit pas contourner le garde-fou
+    "Le titre est sous-evalue au cours actuel.",
+    "Belle opportunite d'achat sur le secteur bancaire.",
+    "Point d'entree interessant sous 14 000 FCFA.",
 ]
 
 for texte in PRESCRIPTIFS:
@@ -68,6 +75,8 @@ FACTUELS = [
     "Buy orders reached 12,000 shares on the session.",
     "Sell-side coverage remains limited on the BRVM.",
     "Buy volume exceeded sell volume.",
+    # L'infinitif AILLEURS qu'en tête de phrase reste explicatif, donc licite.
+    "Les frais pour acheter une action s'élèvent à 1,2 %.",
 ]
 
 for texte in FACTUELS:
@@ -96,16 +105,23 @@ assert enforce("Cours du jour : 15 400 FCFA.") == "Cours du jour : 15 400 FCFA."
 
 print("[limites] texte vide / None gérés")
 
-# --- 5. Le README annonce des termes précis : ils DOIVENT être bloqués --------
-# Ce test garde la documentation honnête. Le README public promet que le linter
-# bloque ces termes ; si quelqu'un modifie _MOTIFS et casse l'un d'eux, ce test
-# échoue AVANT que la promesse ne devienne un mensonge.
+# --- 5. Les READMEs annoncent des termes précis : ils DOIVENT être bloqués ----
+# Ce test garde la documentation honnête. Les READMEs publics (EN et FR)
+# promettent que le linter bloque ces termes ; si quelqu'un modifie _MOTIFS et
+# casse l'un d'eux, ce test échoue AVANT que la promesse ne devienne un mensonge.
 TERMES_ANNONCES_README = {
+    # README.md (anglais)
     "buy": "Buy SONATEL now.",
     "sell": "Sell ETIT before the dividend.",
     "we recommend": "We recommend the banking sector.",
     "price target": "Price target: XOF 20,000.",
     "undervalued": "The stock is undervalued.",
+    # docs/README.fr.md (français)
+    "acheter": "Acheter SONATEL maintenant.",
+    "vendre": "Vendre ETIT avant le détachement.",
+    "nous recommandons": "Nous recommandons le secteur bancaire.",
+    "objectif de cours": "Objectif de cours : 20 000 FCFA.",
+    "sous-évalué": "Le titre est sous-évalué.",
 }
 
 for terme, phrase in TERMES_ANNONCES_README.items():
@@ -114,5 +130,5 @@ for terme, phrase in TERMES_ANNONCES_README.items():
         "Corriger le linter OU corriger le README — pas de promesse non tenue."
     )
 
-print(f"[README] {len(TERMES_ANNONCES_README)} termes annoncés → tous bloqués")
+print(f"[README] {len(TERMES_ANNONCES_README)} termes annoncés (EN+FR) → tous bloqués")
 print("OK — linter éditorial conforme")
