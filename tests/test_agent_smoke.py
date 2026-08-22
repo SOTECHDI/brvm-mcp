@@ -18,7 +18,7 @@ from agent.tools import TOOLS
 # 1. Les outils sont bien des outils LangChain avec nom + description
 noms = [t.name for t in TOOLS]
 print(f"[outils] {len(TOOLS)} outils enregistrés : {', '.join(noms)}")
-assert len(TOOLS) == 10
+assert len(TOOLS) == 18, f"parité avec les 18 outils MCP attendue, obtenu {len(TOOLS)}"
 for t in TOOLS:
     assert t.description and len(t.description) > 20, f"{t.name} : description trop courte"
 

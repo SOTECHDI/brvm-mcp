@@ -25,6 +25,7 @@ from langchain_anthropic import ChatAnthropic
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 
+from .editorial import enforce
 from .prompts import SYSTEM_PROMPT
 from .tools import TOOLS
 
@@ -58,10 +59,20 @@ def build_agent(model: str = DEFAULT_MODEL, temperature: float = 0.2):
     return agent
 
 
-def ask(agent, question: str, thread_id: str = "default") -> str:
+def ask(
+    agent,
+    question: str,
+    thread_id: str = "default",
+    enforce_editorial: bool = True,
+) -> str:
     """
     Pose une question à l'agent et renvoie sa réponse texte.
     Le 'thread_id' permet de tenir plusieurs conversations séparées.
+
+    Par défaut, la réponse passe par le linter éditorial (voir editorial.py) :
+    un texte contenant du vocabulaire prescriptif lève EditorialViolation plutôt
+    que d'être renvoyé. Le prompt système seul ne suffit pas comme garantie de
+    conformité AMF-UMOA ; ce contrôle est déterministe.
     """
     config = {"configurable": {"thread_id": thread_id}}
     result = agent.invoke(
@@ -69,4 +80,5 @@ def ask(agent, question: str, thread_id: str = "default") -> str:
         config=config,
     )
     # Le dernier message est la réponse de l'agent.
-    return result["messages"][-1].content
+    reponse = result["messages"][-1].content
+    return enforce(reponse) if enforce_editorial else reponse

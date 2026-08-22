@@ -116,6 +116,32 @@ Automate with cron (weekdays at 12:00 GMT):
 
 ---
 
+## LLM agent & regulatory compliance
+
+Beyond raw data access, the repository ships a ReAct agent (LangGraph) that
+consumes the 18 MCP tools and answers market questions in plain language.
+
+**Compliance by design.** Publishing investment recommendations in the UEMOA
+zone is a regulated activity requiring a CIB licence from the AMF-UMOA. Rather
+than relying on prompt instructions alone, every answer passes through an
+**editorial linter** that blocks prescriptive vocabulary — *buy*, *sell*,
+*we recommend*, *price target*, *undervalued* — before it is returned. Output
+that fails the check raises `EditorialViolation` and is **rejected, not
+silently rewritten**: rewriting would hide the drift instead of surfacing it.
+
+The linter matches prescriptive *constructions*, not isolated words. "The
+company sold its subsidiary" is a corporate event and passes; "sell SONATEL"
+does not. This distinction is what keeps the guardrail usable on real bulletins.
+
+```bash
+pytest tests/test_editorial.py   # 18 prescriptive samples blocked, 10 factual ones passed
+```
+
+Answers therefore stay within factual reporting: prices, yields, volumes,
+corporate events. No advice, no forecasts.
+
+---
+
 ## Architecture
 
 ```
@@ -132,11 +158,18 @@ brvm-mcp/
 │   ├── sikafinance.py      # OHLC, dividends (Sika Finance)
 │   ├── storage.py          # SQLite historization (UPSERT, stats, performance)
 │   └── fundamentals.py     # P/E / EPS extraction from PDF (pdfplumber)
+├── agent/
+│   ├── graph.py            # LangGraph ReAct agent over the MCP tools
+│   ├── tools.py            # LangChain wrappers — all 18 tools
+│   ├── prompts.py          # System prompt — analytical role, never advisory
+│   ├── editorial.py        # Prescriptive-vocabulary blocker (regulatory guardrail)
+│   └── cli.py              # Interactive CLI
 └── tests/
     ├── fixture_home.html   # Captured brvm.org HTML for offline tests
     ├── test_parsers.py     # Quote / dividend parsing
     ├── test_storage.py     # SQLite storage
-    └── test_agent_smoke.py # Agent smoke test
+    ├── test_agent_smoke.py # Agent smoke test
+    └── test_editorial.py   # Editorial linter — blocking + false-positive guard
 ```
 
 **Technical notes:**
