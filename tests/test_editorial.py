@@ -63,6 +63,11 @@ FACTUELS = [
     "The company sold its Malian subsidiary in Q2.",
     "Le rendement du dividende atteint 7,8 % sur la base du dernier acompte.",
     "Assemblée générale convoquée le 15 juin ; distribution soumise au vote.",
+    # Anglais : « buy » / « sell » ont des emplois factuels qu'il ne faut pas
+    # confondre avec l'impératif (carnet d'ordres, catégorie d'analystes).
+    "Buy orders reached 12,000 shares on the session.",
+    "Sell-side coverage remains limited on the BRVM.",
+    "Buy volume exceeded sell volume.",
 ]
 
 for texte in FACTUELS:
@@ -90,4 +95,24 @@ assert check(None) == [], "None : aucune infraction (pas de crash)"
 assert enforce("Cours du jour : 15 400 FCFA.") == "Cours du jour : 15 400 FCFA."
 
 print("[limites] texte vide / None gérés")
+
+# --- 5. Le README annonce des termes précis : ils DOIVENT être bloqués --------
+# Ce test garde la documentation honnête. Le README public promet que le linter
+# bloque ces termes ; si quelqu'un modifie _MOTIFS et casse l'un d'eux, ce test
+# échoue AVANT que la promesse ne devienne un mensonge.
+TERMES_ANNONCES_README = {
+    "buy": "Buy SONATEL now.",
+    "sell": "Sell ETIT before the dividend.",
+    "we recommend": "We recommend the banking sector.",
+    "price target": "Price target: XOF 20,000.",
+    "undervalued": "The stock is undervalued.",
+}
+
+for terme, phrase in TERMES_ANNONCES_README.items():
+    assert check(phrase), (
+        f"Le README annonce que « {terme} » est bloqué, mais {phrase!r} passe. "
+        "Corriger le linter OU corriger le README — pas de promesse non tenue."
+    )
+
+print(f"[README] {len(TERMES_ANNONCES_README)} termes annoncés → tous bloqués")
 print("OK — linter éditorial conforme")

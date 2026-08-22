@@ -61,6 +61,15 @@ _MOTIFS = [
      "prévision de performance"),
     (r"\b(?:s['’]envolera|chutera)\b", "prévision de performance"),
     # --- Équivalents anglais ---
+    # L'impératif anglais est le verbe nu : « Buy SONATEL ». On ne peut donc pas
+    # bloquer « buy » partout — « buy orders reached 12,000 » est une donnée de
+    # carnet d'ordres, et « sell-side analysts » une catégorie de métier. On cible
+    # l'impératif en tête de phrase, en excluant ces emplois factuels.
+    (r"(?:^|[.!?;:\n]\s*)(?:buy|sell)\b"
+     r"(?!\s*[-–]?\s*(?:orders?|side|volume|pressure|price|ratio)\b)",
+     "injonction d'achat/vente"),
+    (r"\btime\s+to\s+(?:buy|sell)\b", "injonction d'achat/vente"),
+    (r"\bworth\s+(?:buying|selling)\b", "jugement de valeur sur un titre"),
     (r"\bstrong\s+buy\b", "notation prescriptive (strong buy)"),
     (r"\b(?:buy|sell)\s+(?:rating|recommendation|signal)\b", "notation prescriptive"),
     (r"\bprice\s+target\b", "objectif de cours (prévision)"),
