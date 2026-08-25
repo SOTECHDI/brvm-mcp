@@ -22,12 +22,13 @@ from __future__ import annotations
 import os
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 # La BRVM ne cote qu'une fois par jour (fixing vers 10h45 GMT). On tente après,
 # puis on retente : le site est régulièrement injoignable (erreurs SSL, délais).
 HEURES_DEFAUT = "12,14,16"
-PAUSE = 600  # 10 minutes entre deux vérifications
+PAUSE = 600           # 10 minutes entre deux vérifications
+PAUSE_DEMARRAGE = 20  # laisse le serveur répondre au healthcheck avant de scraper
 
 
 def _heures() -> list[int]:
@@ -40,6 +41,41 @@ def _heures() -> list[int]:
     return heures or [12, 14, 16]
 
 
+def _derniere_seance_en_base():
+    """Date de la dernière séance déjà historisée, ou None si base vide."""
+    from .storage import db_stats
+    try:
+        valeur = db_stats().get("derniere_seance")
+        return date.fromisoformat(valeur) if valeur else None
+    except Exception:
+        return None  # base absente ou vide : ce n'est pas une erreur
+
+
+def _rattrapage(log):
+    """
+    Au démarrage, comble la séance manquante si le serveur a redémarré en
+    dehors des créneaux (redéploiement, panne, mise à l'échelle).
+    Renvoie la date enregistrée, ou None.
+    """
+    aujourdhui = datetime.now(timezone.utc).date()
+    deja = _derniere_seance_en_base()
+
+    if deja == aujourdhui:
+        log.info("[releve] seance %s deja en base — pas de rattrapage", deja)
+        return aujourdhui
+
+    log.info("[releve] rattrapage au demarrage (derniere seance en base : %s)",
+             deja or "aucune")
+    try:
+        from .storage import snapshot_daily
+        resume = snapshot_daily()
+        log.info("[releve] rattrapage OK — %s", resume)
+        return aujourdhui
+    except Exception as e:
+        log.warning("[releve] rattrapage impossible (creneaux du jour prendront le relais) : %s", e)
+        return None
+
+
 def _boucle(log) -> None:
     from .storage import snapshot_daily
 
@@ -47,7 +83,10 @@ def _boucle(log) -> None:
     log.info("[releve] planificateur actif — tentatives a %s UTC, jours ouvres",
              ", ".join(f"{h}h" for h in heures))
 
-    dernier_succes = None   # date de séance déjà enregistrée avec succès
+    # Le serveur doit d'abord être joignable : le healthcheck Railway ne doit
+    # pas échouer pendant qu'on scrape.
+    time.sleep(PAUSE_DEMARRAGE)
+    dernier_succes = _rattrapage(log)
 
     while True:
         try:
