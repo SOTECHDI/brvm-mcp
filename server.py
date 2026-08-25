@@ -546,6 +546,11 @@ def main():
         )
         log.info(f"Listen on http://{host}:{port} - rate limit 25 calls/day free tier")
 
+        # Relevé quotidien : il doit tourner ici, dans le processus qui sert les
+        # clients, car sur Railway un volume n'est attaché qu'à un seul service.
+        from brvm_scraper.planificateur import demarrer as demarrer_releve
+        demarrer_releve(log)
+
         # Patch au niveau de la CLASSE FastMCP (pas de l'instance) pour garantir
         # que l'interception fonctionne quel que soit le chemin d'appel interne.
         # FastMCP.run_streamable_http_async() appelle self.streamable_http_app()
