@@ -53,7 +53,12 @@ _MOTIFS = [
     # est souvent explicatif et légitime (« les frais pour acheter une action »),
     # donc on ne l'attrape qu'en début de phrase.
     (r"(?:^|[.!?;:\n]\s*)(?:acheter|vendre)\b", "injonction d'achat/vente"),
-    (r"\ba\s+(?:acheter|vendre)\b", "qualification « à acheter/vendre »"),
+    # « incitation à acheter » ne s'emploie en pratique que dans une clause de
+    # non-responsabilité, qui la nie : « ne constitue ni un conseil en
+    # investissement ni une incitation à acheter ou vendre un titre ». Bloquer
+    # cet emploi reviendrait à rejeter l'avertissement légal lui-même.
+    (r"(?<!incitation\s)(?<!invitation\s)(?<!inciter\s)\ba\s+(?:acheter|vendre)\b",
+     "qualification « à acheter/vendre »"),
     (r"\bil\s+faut\s+(?:acheter|vendre|investir|miser)\b", "injonction d'investissement"),
     (r"\bvous\s+devriez\s+(?:acheter|vendre|investir)\b", "injonction d'investissement"),
     (r"\b(?:positionnez|misez|profitez)[- ]?(?:vous)?\b", "incitation à l'action"),

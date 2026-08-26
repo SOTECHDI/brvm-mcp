@@ -130,5 +130,5 @@ for terme, phrase in TERMES_ANNONCES_README.items():
         "Corriger le linter OU corriger le README — pas de promesse non tenue."
     )
 
-print(f"[README] {len(TERMES_ANNONCES_README)} termes annoncés (EN+FR) → tous bloqués")
+print(f"[README] {len(TERMES_ANNONCES_README)} termes annoncés (EN+FR) : tous bloqués")
 print("OK — linter éditorial conforme")
