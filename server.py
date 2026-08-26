@@ -326,10 +326,41 @@ def brvm_history_status() -> str:
     """
     if err := _rl(): return err
     try:
-        return _ok(db_stats())
+        etat = db_stats()
+        etat["stockage"] = _etat_stockage()
+        return _ok(etat)
     except Exception as e:
         log.exception("history_status")
         return _err(f"Échec lecture de l'état de la base : {e}")
+
+
+def _etat_stockage() -> dict:
+    """
+    Où la base est-elle écrite, et cet emplacement survit-il à un
+    redéploiement ? Sans volume monté, l'historique repart de zéro à chaque
+    mise en ligne — le diagnostic doit être lisible à distance, sans avoir à
+    ouvrir un terminal sur le conteneur.
+    """
+    chemin = os.getenv("BRVM_DB") or "(défaut — dans le conteneur)"
+    dossier = os.path.dirname(chemin) or "."
+    try:
+        persistant = os.path.ismount(dossier)
+    except Exception:
+        persistant = False
+    try:
+        taille = os.path.getsize(chemin) if os.path.exists(chemin) else 0
+    except Exception:
+        taille = 0
+    return {
+        "chemin": chemin,
+        "volume_persistant": persistant,
+        "fichier_present": taille > 0,
+        "taille_octets": taille,
+        "avertissement": None if persistant else (
+            "La base n'est PAS sur un volume persistant : elle sera effacée "
+            "au prochain redéploiement."
+        ),
+    }
 
 
 @mcp.tool()
